@@ -1,0 +1,517 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Optimizador de Tela - Nesting</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  canvas { touch-action: none; }
+  button, .btn, .tool-btn, .mirror-btn, select, input, a {
+    touch-action: manipulation;
+  }
+body { background:#1a1a2e; color:#fff; font-family:sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+#header { background:#16213e; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #0f3460; flex-shrink:0; }
+#header h1 { font-size:14px; color:#00d4ff; }
+
+#top-panel { background:#16213e; border-bottom:1px solid #0f3460; padding:8px 10px; flex-shrink:0; }
+#top-panel h3 { font-size:11px; color:#aaa; margin-bottom:6px; }
+#sku-list { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
+.sku-chip { background:#0f3460; border:2px solid transparent; border-radius:8px; padding:5px 10px; font-size:11px; cursor:pointer; display:flex; align-items:center; gap:5px; }
+.sku-chip.selected { border-color:#00d4ff; }
+.sku-chip .dot { width:12px; height:12px; border-radius:50%; }
+
+#tela-config { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.cfg-label { font-size:11px; color:#aaa; }
+select, input[type=number] { background:#0f3460; color:#fff; border:1px solid #00d4ff44; border-radius:6px; padding:4px 8px; font-size:12px; }
+
+#canvas-area { flex:1; position:relative; overflow:hidden; background:#111; }
+#nest-canvas { display:block; }
+#stats-bar { position:absolute; bottom:0; left:0; right:0; background:#000b; padding:6px 12px; display:flex; gap:14px; align-items:center; font-size:12px; }
+.stat { color:#aaa; }
+.stat span { color:#00d4ff; font-weight:bold; }
+.stat-warn { color:#ff6d00; font-weight:bold; }
+
+#bottom-bar { background:#16213e; border-top:1px solid #0f3460; padding:6px 10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; flex-shrink:0; }
+.btn { padding:7px 14px; border:none; border-radius:8px; font-size:12px; cursor:pointer; font-weight:bold; }
+.btn-cyan   { background:#00d4ff; color:#000; }
+.btn-green  { background:#00c853; color:#000; }
+.btn-orange { background:#ff6d00; color:#fff; }
+.btn-red    { background:#e53935; color:#fff; }
+.btn-gray   { background:#444; color:#fff; }
+
+.modal-bg { position:fixed; inset:0; background:#000a; z-index:100; display:flex; align-items:center; justify-content:center; }
+.modal { background:#16213e; border:1px solid #00d4ff44; border-radius:14px; padding:20px; width:90%; max-width:380px; }
+.modal h2 { color:#00d4ff; margin-bottom:14px; font-size:15px; }
+.modal input, .modal select { width:100%; margin-bottom:10px; padding:8px; background:#0f3460; color:#fff; border:1px solid #00d4ff44; border-radius:8px; font-size:13px; }
+.modal label { font-size:12px; color:#aaa; display:block; margin-bottom:4px; }
+.modal-btns { display:flex; gap:8px; margin-top:6px; }
+.modal-btns button { flex:1; }
+.hidden { display:none !important; }
+
+#piece-list-wrap { max-height:180px; overflow-y:auto; margin-bottom:10px; }
+.piece-row { background:#0f3460; border-radius:8px; padding:8px; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+.piece-row input { flex:1; min-width:60px; }
+
+.tip { font-size:11px; color:#aaa; margin-top:4px; }
+/* FIX: restore touch events for interactive elements */
+button, .btn, .tool-btn, .mirror-btn, .color-dot,
+select, input, textarea, a, label, [onclick] {
+  touch-action: manipulation !important;
+  cursor: pointer;
+}</style>
+</head>
+<body>
+
+<div id="header">
+  <div style="display:flex;align-items:center;gap:8px;">
+    <span style="font-size:18px;">🧵</span>
+    <h1>Optimizador de Tela (Nesting)</h1>
+  </div>
+  <div style="display:flex;gap:6px;">
+    <button class="btn btn-gray" onclick="showAddSKU()" style="font-size:11px;">➕ SKU</button>
+    <button class="btn btn-cyan" onclick="autoNest()" style="font-size:11px;">⚡ Auto-acomodar</button>
+    <button class="btn btn-green" onclick="showProjection()" style="font-size:11px;">📽️ Proyectar</button>
+  </div>
+</div>
+
+<div id="top-panel">
+  <h3>SKUs en el tendido:</h3>
+  <div id="sku-list">
+    <div style="font-size:11px;color:#555;">Sin SKUs — toca ➕ SKU para agregar</div>
+  </div>
+  <div id="tela-config">
+    <span class="cfg-label">Ancho tela:</span>
+    <select id="sel-tela" onchange="setTela(this.value)">
+      <option value="90">90 cm</option>
+      <option value="110" selected>110 cm</option>
+      <option value="140">140 cm</option>
+      <option value="150">150 cm</option>
+    </select>
+    <span class="cfg-label">Largo disponible:</span>
+    <input type="number" id="inp-largo" value="200" min="50" max="2000" style="width:70px" onchange="updateLargo()">
+    <span class="cfg-label">cm</span>
+    <button class="btn btn-gray" onclick="clearAll()" style="font-size:11px;padding:5px 10px;">🗑 Limpiar</button>
+  </div>
+</div>
+
+<div id="canvas-area">
+  <canvas id="nest-canvas"></canvas>
+  <div id="stats-bar">
+    <div class="stat">Tela usada: <span id="st-usado">0</span> cm</div>
+    <div class="stat">Desperdicio: <span id="st-desperdicio">0</span>%</div>
+    <div class="stat">Piezas: <span id="st-piezas">0</span></div>
+    <div class="stat">Eficiencia: <span id="st-efic">0</span>%</div>
+  </div>
+</div>
+
+<div id="bottom-bar">
+  <span style="font-size:11px;color:#aaa;">Toca y arrastra las piezas para reordenar · Pellizca para zoom</span>
+  <button class="btn btn-orange" onclick="rotatePiece()" style="margin-left:auto;font-size:11px;">🔄 Rotar selec.</button>
+  <button class="btn btn-gray" onclick="snapToGrid()" style="font-size:11px;">📐 Ajustar a cuadrícula</button>
+</div>
+
+<!-- ADD SKU MODAL -->
+<div id="modal-add-sku" class="modal-bg hidden">
+  <div class="modal">
+    <h2>➕ Agregar SKU al tendido</h2>
+    <label>Nombre / Referencia</label>
+    <input type="text" id="add-name" placeholder="Ej: Blusa básica">
+    <label>SKU / Número</label>
+    <input type="text" id="add-sku" placeholder="Ej: 431">
+    <label>Piezas del patrón:</label>
+    <div id="piece-list-wrap">
+      <div id="piece-list"></div>
+    </div>
+    <button class="btn btn-gray" onclick="addPieceRow()" style="width:100%;margin-bottom:10px;font-size:12px;">➕ Agregar pieza</button>
+    <div class="tip">Cada pieza: nombre, ancho (cm) y alto (cm)</div>
+    <div class="modal-btns" style="margin-top:10px;">
+      <button class="btn btn-gray" onclick="closeModal('modal-add-sku')">Cancelar</button>
+      <button class="btn btn-green" onclick="confirmAddSKU()">✅ Agregar al tendido</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROJECTION -->
+<div id="proj-overlay" class="hidden" style="position:fixed;inset:0;background:#000;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+  <canvas id="proj-canvas" style="display:block;"></canvas>
+  <div style="position:fixed;bottom:0;left:0;right:0;background:#000c;padding:8px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;z-index:201;">
+    <button onclick="pScale(-0.05)" style="padding:8px 16px;background:#333;border:none;color:#fff;border-radius:8px;font-size:18px;cursor:pointer;">➖</button>
+    <span id="pscale-label" style="color:#fff;line-height:36px;min-width:60px;text-align:center;">100%</span>
+    <button onclick="pScale(+0.05)" style="padding:8px 16px;background:#333;border:none;color:#fff;border-radius:8px;font-size:18px;cursor:pointer;">➕</button>
+    <button onclick="pMove(-15,0)" style="padding:8px 12px;background:#333;border:none;color:#fff;border-radius:8px;cursor:pointer;">◀</button>
+    <button onclick="pMove(0,-15)" style="padding:8px 12px;background:#333;border:none;color:#fff;border-radius:8px;cursor:pointer;">▲</button>
+    <button onclick="pMove(0,+15)" style="padding:8px 12px;background:#333;border:none;color:#fff;border-radius:8px;cursor:pointer;">▼</button>
+    <button onclick="pMove(+15,0)" style="padding:8px 12px;background:#333;border:none;color:#fff;border-radius:8px;cursor:pointer;">▶</button>
+    <button onclick="exitProj()" style="padding:8px 16px;background:#e53935;border:none;color:#fff;border-radius:8px;cursor:pointer;">✖ Salir</button>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+let telaCm = 110, largoCm = 200;
+const SCALE_PX = 3; // px per cm for display
+let canvasW, canvasH, dpr;
+const canvas = document.getElementById('nest-canvas');
+const ctx = canvas.getContext('2d');
+
+// colors per SKU
+const COLORS = ['#00d4ff','#00c853','#ff6d00','#e53935','#aa00ff','#ffea00','#ff4081','#00bcd4'];
+
+// SKUs: [{name, sku, color, pieces:[{name,w,h,x,y,rotated,skuIdx}]}]
+let skus = [];
+let pieces = []; // flat list of placed pieces
+let selectedPiece = null;
+
+// drag
+let dragging = false, dragOffX=0, dragOffY=0;
+let pinching=false, pinchD0=0, viewScale=1, viewScale0=1, viewOffX=0, viewOffY=0, viewOffX0=0, viewOffY0=0, pinchMX=0, pinchMY=0;
+let pointers = {};
+
+function resize() {
+  const area = document.getElementById('canvas-area');
+  canvasW = area.clientWidth;
+  canvasH = area.clientHeight;
+  dpr = window.devicePixelRatio || 1;
+  canvas.width  = canvasW * dpr;
+  canvas.height = canvasH * dpr;
+  canvas.style.width  = canvasW + 'px';
+  canvas.style.height = canvasH + 'px';
+  ctx.scale(dpr, dpr);
+  render();
+}
+
+function setTela(v) { telaCm = parseInt(v); render(); }
+function updateLargo() { largoCm = parseInt(document.getElementById('inp-largo').value) || 200; render(); }
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function render() {
+  ctx.clearRect(0, 0, canvasW, canvasH);
+  ctx.save();
+  ctx.translate(viewOffX, viewOffY);
+  ctx.scale(viewScale, viewScale);
+
+  const s = SCALE_PX;
+  const tw = telaCm * s, tl = largoCm * s;
+
+  // tela background
+  ctx.fillStyle = '#f5f5f0';
+  ctx.fillRect(0, 0, tw, tl);
+
+  // grid 10cm
+  ctx.strokeStyle = '#ccc';
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x <= telaCm; x += 10) {
+    ctx.beginPath(); ctx.moveTo(x*s,0); ctx.lineTo(x*s,tl); ctx.stroke();
+    if (x > 0) { ctx.fillStyle='#999'; ctx.font=`${8/viewScale}px sans-serif`; ctx.fillText(x+'cm', x*s+2, 10); }
+  }
+  for (let y = 0; y <= largoCm; y += 10) {
+    ctx.beginPath(); ctx.moveTo(0,y*s); ctx.lineTo(tw,y*s); ctx.stroke();
+    if (y > 0) { ctx.fillStyle='#999'; ctx.font=`${8/viewScale}px sans-serif`; ctx.fillText(y+'cm', 2, y*s-2); }
+  }
+
+  // tela border
+  ctx.strokeStyle = '#e53935';
+  ctx.lineWidth = 2/viewScale;
+  ctx.strokeRect(0, 0, tw, tl);
+
+  // pieces
+  pieces.forEach((p, i) => {
+    const pw = (p.rotated ? p.h : p.w) * s;
+    const ph = (p.rotated ? p.w : p.h) * s;
+    ctx.fillStyle = p.color + 'cc';
+    ctx.fillRect(p.x*s, p.y*s, pw, ph);
+    ctx.strokeStyle = p === selectedPiece ? '#fff' : p.color;
+    ctx.lineWidth = p === selectedPiece ? 3/viewScale : 1.5/viewScale;
+    ctx.strokeRect(p.x*s, p.y*s, pw, ph);
+    // label
+    ctx.fillStyle = '#000';
+    ctx.font = `bold ${Math.max(8, 10/viewScale)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(p.skuLabel, p.x*s + pw/2, p.y*s + ph/2 - 6/viewScale);
+    ctx.font = `${Math.max(7, 8/viewScale)}px sans-serif`;
+    ctx.fillText(p.name, p.x*s + pw/2, p.y*s + ph/2 + 8/viewScale);
+    ctx.fillText(`${(p.rotated?p.h:p.w)}×${(p.rotated?p.w:p.h)}cm`, p.x*s + pw/2, p.y*s + ph/2 + 20/viewScale);
+    ctx.textAlign = 'left';
+  });
+
+  ctx.restore();
+  updateStats();
+}
+
+function updateStats() {
+  if (pieces.length === 0) {
+    document.getElementById('st-usado').textContent = '0';
+    document.getElementById('st-desperdicio').textContent = '0';
+    document.getElementById('st-piezas').textContent = '0';
+    document.getElementById('st-efic').textContent = '0';
+    return;
+  }
+  const maxY = Math.max(...pieces.map(p => p.y + (p.rotated ? p.w : p.h)));
+  const telaUsada = maxY;
+  const areaTotal = telaCm * telaUsada;
+  const areaPiezas = pieces.reduce((sum, p) => sum + p.w * p.h, 0);
+  const efic = areaTotal > 0 ? Math.round(areaPiezas / areaTotal * 100) : 0;
+  document.getElementById('st-usado').textContent = telaUsada.toFixed(1);
+  document.getElementById('st-piezas').textContent = pieces.length;
+  document.getElementById('st-efic').textContent = efic;
+  document.getElementById('st-desperdicio').textContent = (100 - efic);
+}
+
+// ─── AUTO-NEST ────────────────────────────────────────────────────────────────
+function autoNest() {
+  if (pieces.length === 0) { alert('Primero agrega SKUs con sus piezas'); return; }
+  // Simple shelf/strip nesting: place pieces left to right, wrap to next row
+  const sorted = [...pieces].sort((a,b) => (b.rotated?b.w:b.h) - (a.rotated?a.w:a.h));
+  let curX = 0, curY = 0, rowH = 0;
+  const GAP = 1; // 1cm gap
+
+  sorted.forEach(p => {
+    const pw = p.rotated ? p.h : p.w;
+    const ph = p.rotated ? p.w : p.h;
+    if (curX + pw > telaCm) {
+      curX = 0;
+      curY += rowH + GAP;
+      rowH = 0;
+    }
+    p.x = curX;
+    p.y = curY;
+    curX += pw + GAP;
+    rowH = Math.max(rowH, ph);
+  });
+
+  // copy back
+  sorted.forEach((p,i) => { pieces[i].x = p.x; pieces[i].y = p.y; });
+  render();
+}
+
+// ─── ADD SKU ─────────────────────────────────────────────────────────────────
+let pieceRowCount = 0;
+function showAddSKU() {
+  pieceRowCount = 0;
+  document.getElementById('piece-list').innerHTML = '';
+  document.getElementById('add-name').value = '';
+  document.getElementById('add-sku').value = '';
+  // Add 3 default piece rows
+  addPieceRow('Delantero', 26, 46);
+  addPieceRow('Espalda', 26, 44);
+  addPieceRow('Manga', 18, 58);
+  document.getElementById('modal-add-sku').classList.remove('hidden');
+}
+
+function addPieceRow(name='', w='', h='') {
+  pieceRowCount++;
+  const id = pieceRowCount;
+  const row = document.createElement('div');
+  row.className = 'piece-row';
+  row.id = 'prow-'+id;
+  row.innerHTML = `
+    <input type="text" placeholder="Nombre" value="${name}" style="flex:2;min-width:80px;padding:5px;background:#1a4a80;color:#fff;border:none;border-radius:6px;">
+    <input type="number" placeholder="Ancho cm" value="${w}" style="flex:1;min-width:55px;padding:5px;background:#1a4a80;color:#fff;border:none;border-radius:6px;">
+    <input type="number" placeholder="Alto cm" value="${h}" style="flex:1;min-width:55px;padding:5px;background:#1a4a80;color:#fff;border:none;border-radius:6px;">
+    <button onclick="this.parentElement.remove()" style="background:#e53935;border:none;color:#fff;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:14px;">✕</button>`;
+  document.getElementById('piece-list').appendChild(row);
+}
+
+function confirmAddSKU() {
+  const name = document.getElementById('add-name').value.trim() || 'Patrón';
+  const sku  = document.getElementById('add-sku').value.trim() || '—';
+  const color = COLORS[skus.length % COLORS.length];
+  const rows  = document.getElementById('piece-list').querySelectorAll('.piece-row');
+  const newPieces = [];
+
+  rows.forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    const pname = inputs[0].value.trim() || 'Pieza';
+    const pw = parseFloat(inputs[1].value) || 20;
+    const ph = parseFloat(inputs[2].value) || 30;
+    newPieces.push({ name: pname, w: pw, h: ph, x: 0, y: 0, rotated: false, color, skuLabel: 'SKU '+sku });
+  });
+
+  skus.push({ name, sku, color });
+  pieces.push(...newPieces);
+  autoNest();
+  renderSKUList();
+  closeModal('modal-add-sku');
+}
+
+function renderSKUList() {
+  const el = document.getElementById('sku-list');
+  if (skus.length === 0) {
+    el.innerHTML = '<div style="font-size:11px;color:#555;">Sin SKUs — toca ➕ SKU para agregar</div>';
+    return;
+  }
+  el.innerHTML = '';
+  skus.forEach((s,i) => {
+    const chip = document.createElement('div');
+    chip.className = 'sku-chip';
+    chip.innerHTML = `<div class="dot" style="background:${s.color}"></div><span>SKU ${s.sku} · ${s.name}</span>
+      <button onclick="removeSKU(${i})" style="background:#e5393544;border:none;color:#fff;border-radius:4px;padding:1px 6px;cursor:pointer;font-size:11px;">✕</button>`;
+    el.appendChild(chip);
+  });
+}
+
+function removeSKU(i) {
+  const label = 'SKU ' + skus[i].sku;
+  pieces = pieces.filter(p => p.skuLabel !== label);
+  skus.splice(i, 1);
+  renderSKUList();
+  render();
+}
+
+// ─── DRAG & TOUCH ─────────────────────────────────────────────────────────────
+function canvasXY(ex, ey) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: ((ex - rect.left - viewOffX) / viewScale) / SCALE_PX,
+    y: ((ey - rect.top  - viewOffY) / viewScale) / SCALE_PX
+  };
+}
+
+canvas.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  pointers[e.pointerId] = e;
+  if (Object.keys(pointers).length === 2) {
+    dragging = false;
+    pinching = true;
+    const pts = Object.values(pointers);
+    pinchD0 = Math.hypot(pts[1].clientX-pts[0].clientX, pts[1].clientY-pts[0].clientY);
+    viewScale0 = viewScale; viewOffX0 = viewOffX; viewOffY0 = viewOffY;
+    pinchMX = (pts[0].clientX+pts[1].clientX)/2;
+    pinchMY = (pts[0].clientY+pts[1].clientY)/2;
+    return;
+  }
+  const {x,y} = canvasXY(e.clientX, e.clientY);
+  // find piece under finger
+  const hit = [...pieces].reverse().find(p => {
+    const pw = p.rotated ? p.h : p.w, ph = p.rotated ? p.w : p.h;
+    return x >= p.x && x <= p.x+pw && y >= p.y && y <= p.y+ph;
+  });
+  if (hit) {
+    selectedPiece = hit;
+    dragging = true;
+    dragOffX = x - hit.x;
+    dragOffY = y - hit.y;
+  } else {
+    selectedPiece = null;
+  }
+  render();
+});
+
+canvas.addEventListener('pointermove', e => {
+  e.preventDefault();
+  pointers[e.pointerId] = e;
+  if (pinching && Object.keys(pointers).length >= 2) {
+    const pts = Object.values(pointers);
+    const d = Math.hypot(pts[1].clientX-pts[0].clientX, pts[1].clientY-pts[0].clientY);
+    const newScale = Math.max(0.4, Math.min(8, viewScale0 * d / pinchD0));
+    const mx = (pts[0].clientX+pts[1].clientX)/2;
+    const my = (pts[0].clientY+pts[1].clientY)/2;
+    const rect = canvas.getBoundingClientRect();
+    const sx = mx - rect.left, sy = my - rect.top;
+    viewOffX = sx - (sx - viewOffX0) * newScale / viewScale0 + (mx - pinchMX);
+    viewOffY = sy - (sy - viewOffY0) * newScale / viewScale0 + (my - pinchMY);
+    viewScale = newScale;
+    render(); return;
+  }
+  if (!dragging || !selectedPiece) return;
+  const {x,y} = canvasXY(e.clientX, e.clientY);
+  const pw = selectedPiece.rotated ? selectedPiece.h : selectedPiece.w;
+  const ph = selectedPiece.rotated ? selectedPiece.w : selectedPiece.h;
+  selectedPiece.x = Math.max(0, Math.min(telaCm - pw, x - dragOffX));
+  selectedPiece.y = Math.max(0, x - dragOffX >= 0 ? y - dragOffY : selectedPiece.y);
+  render();
+});
+
+canvas.addEventListener('pointerup', e => {
+  e.preventDefault();
+  delete pointers[e.pointerId];
+  if (Object.keys(pointers).length < 2) pinching = false;
+  dragging = false;
+});
+canvas.addEventListener('pointercancel', e => { delete pointers[e.pointerId]; dragging=false; pinching=false; });
+
+// ─── ROTATE / SNAP ────────────────────────────────────────────────────────────
+function rotatePiece() {
+  if (!selectedPiece) { alert('Selecciona una pieza primero'); return; }
+  selectedPiece.rotated = !selectedPiece.rotated;
+  // ensure within bounds
+  const pw = selectedPiece.rotated ? selectedPiece.h : selectedPiece.w;
+  if (selectedPiece.x + pw > telaCm) selectedPiece.x = Math.max(0, telaCm - pw);
+  render();
+}
+
+function snapToGrid() {
+  pieces.forEach(p => { p.x = Math.round(p.x); p.y = Math.round(p.y); });
+  render();
+}
+
+function clearAll() {
+  if (!confirm('¿Limpiar todo el tendido?')) return;
+  pieces = []; skus = [];
+  renderSKUList(); render();
+}
+
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+// ─── PROJECTION ──────────────────────────────────────────────────────────────
+let pScaleFactor = 1, pOX = 0, pOY = 0;
+function showProjection() {
+  const ov = document.getElementById('proj-overlay');
+  ov.classList.remove('hidden');
+  const pc = document.getElementById('proj-canvas');
+  pc.width  = window.innerWidth  * (window.devicePixelRatio||1);
+  pc.height = (window.innerHeight-60) * (window.devicePixelRatio||1);
+  pc.style.width  = window.innerWidth + 'px';
+  pc.style.height = (window.innerHeight-60) + 'px';
+  pScaleFactor = 1; pOX = 0; pOY = 0;
+  renderProj();
+  if (ov.requestFullscreen) ov.requestFullscreen().catch(()=>{});
+}
+
+function renderProj() {
+  const pc = document.getElementById('proj-canvas');
+  const pc2 = pc.getContext('2d');
+  const dpr2 = window.devicePixelRatio||1;
+  pc2.clearRect(0,0,pc.width,pc.height);
+  pc2.fillStyle='#000'; pc2.fillRect(0,0,pc.width,pc.height);
+  pc2.save();
+  pc2.scale(dpr2, dpr2);
+  pc2.translate(pOX, pOY);
+  pc2.scale(pScaleFactor, pScaleFactor);
+  const s = SCALE_PX;
+  // draw tela outline
+  pc2.strokeStyle = '#ff6d0088'; pc2.lineWidth = 2/pScaleFactor;
+  pc2.strokeRect(0,0,telaCm*s,largoCm*s);
+  // draw pieces white on black
+  pieces.forEach(p => {
+    const pw = (p.rotated?p.h:p.w)*s, ph = (p.rotated?p.w:p.h)*s;
+    pc2.strokeStyle = p.color; pc2.lineWidth = 2/pScaleFactor;
+    pc2.strokeRect(p.x*s, p.y*s, pw, ph);
+    pc2.fillStyle = p.color+'33';
+    pc2.fillRect(p.x*s, p.y*s, pw, ph);
+    pc2.fillStyle = '#fff';
+    pc2.font = `bold ${12/pScaleFactor}px sans-serif`;
+    pc2.textAlign = 'center';
+    pc2.fillText(p.skuLabel, p.x*s+pw/2, p.y*s+ph/2);
+    pc2.font = `${9/pScaleFactor}px sans-serif`;
+    pc2.fillText(p.name, p.x*s+pw/2, p.y*s+ph/2+14/pScaleFactor);
+    pc2.textAlign='left';
+  });
+  pc2.restore();
+  document.getElementById('pscale-label').textContent = Math.round(pScaleFactor*100)+'%';
+}
+function pScale(d) { pScaleFactor = Math.max(0.3,Math.min(6,pScaleFactor+d)); renderProj(); }
+function pMove(dx,dy) { pOX+=dx; pOY+=dy; renderProj(); }
+function exitProj() {
+  document.getElementById('proj-overlay').classList.add('hidden');
+  if (document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+window.addEventListener('resize', resize);
+resize();
+</script>
+</body>
+</html>

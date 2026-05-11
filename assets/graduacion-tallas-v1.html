@@ -1,0 +1,501 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Graduación Automática de Tallas</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  canvas { touch-action: none; }
+  button, .btn, .tool-btn, .mirror-btn, select, input, a {
+    touch-action: manipulation;
+  }
+body { background:#1a1a2e; color:#fff; font-family:sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+#header { background:#16213e; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #0f3460; flex-shrink:0; flex-wrap:wrap; gap:6px; }
+#header h1 { font-size:13px; color:#00d4ff; }
+
+#controls { background:#16213e; border-bottom:1px solid #0f3460; padding:8px 10px; flex-shrink:0; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+label { font-size:11px; color:#aaa; }
+select, input[type=number] { background:#0f3460; color:#fff; border:1px solid #00d4ff44; border-radius:6px; padding:5px 8px; font-size:12px; }
+
+#canvas-wrap { flex:1; overflow:hidden; position:relative; background:#111; }
+#grad-canvas { display:block; touch-action:none; }
+
+#legend { position:absolute; top:8px; right:8px; background:#000b; border-radius:8px; padding:8px 12px; font-size:11px; }
+#legend div { display:flex; align-items:center; gap:6px; margin-bottom:3px; }
+#legend .dot { width:16px; height:3px; border-radius:2px; }
+
+#bottom { background:#16213e; border-top:1px solid #0f3460; padding:6px 10px; display:flex; gap:6px; flex-wrap:wrap; align-items:center; flex-shrink:0; }
+.btn { padding:7px 13px; border:none; border-radius:8px; font-size:12px; cursor:pointer; font-weight:bold; }
+.btn-cyan   { background:#00d4ff; color:#000; }
+.btn-green  { background:#00c853; color:#000; }
+.btn-orange { background:#ff6d00; color:#fff; }
+.btn-gray   { background:#444; color:#fff; }
+.btn-purple { background:#aa00ff; color:#fff; }
+
+.modal-bg { position:fixed; inset:0; background:#000a; z-index:100; display:flex; align-items:center; justify-content:center; }
+.modal { background:#16213e; border:1px solid #00d4ff44; border-radius:14px; padding:18px; width:92%; max-width:420px; max-height:90vh; overflow-y:auto; }
+.modal h2 { color:#00d4ff; margin-bottom:12px; font-size:14px; }
+.modal label { font-size:11px; color:#aaa; display:block; margin-bottom:3px; margin-top:8px; }
+.modal input, .modal select { width:100%; padding:7px; background:#0f3460; color:#fff; border:1px solid #00d4ff44; border-radius:7px; font-size:12px; }
+.modal-btns { display:flex; gap:8px; margin-top:12px; }
+.modal-btns button { flex:1; }
+.hidden { display:none !important; }
+
+.tbl { width:100%; border-collapse:collapse; font-size:11px; margin-top:8px; }
+.tbl th { background:#0f3460; padding:5px 4px; text-align:center; }
+.tbl td { padding:4px; text-align:center; border-bottom:1px solid #ffffff11; }
+.tbl td input { width:50px; padding:3px; background:#0f3460; color:#fff; border:1px solid #00d4ff22; border-radius:4px; font-size:11px; text-align:center; }
+
+.tab-bar { display:flex; gap:2px; margin-bottom:10px; }
+.tab { flex:1; padding:6px; background:#0f3460; border:none; color:#aaa; border-radius:6px; cursor:pointer; font-size:11px; }
+.tab.active { background:#00d4ff; color:#000; font-weight:bold; }
+
+.consumo-row { background:#0f3460; border-radius:8px; padding:8px; margin-bottom:6px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.consumo-row label { color:#aaa; font-size:11px; margin:0; }
+.consumo-row input, .consumo-row select { width:70px; margin:0; }
+.consumo-result { background:#00c85322; border:1px solid #00c853; border-radius:8px; padding:10px; font-size:13px; margin-top:8px; }
+/* FIX: restore touch events for interactive elements */
+button, .btn, .tool-btn, .mirror-btn, .color-dot,
+select, input, textarea, a, label, [onclick] {
+  touch-action: manipulation !important;
+  cursor: pointer;
+}</style>
+</head>
+<body>
+
+<div id="header">
+  <div style="display:flex;align-items:center;gap:8px;">
+    <span style="font-size:18px;">📐</span>
+    <h1>Graduación Automática de Tallas</h1>
+  </div>
+  <div style="display:flex;gap:5px;flex-wrap:wrap;">
+    <button class="btn btn-orange" onclick="showAddPattern()" style="font-size:11px;">➕ Patrón</button>
+    <button class="btn btn-cyan" onclick="autoGraduate()" style="font-size:11px;">⚡ Graduar</button>
+    <button class="btn btn-purple" onclick="showConsumo()" style="font-size:11px;">🧵 Consumo</button>
+    <button class="btn btn-green" onclick="exportToNesting()" style="font-size:11px;">→ Nesting</button>
+  </div>
+</div>
+
+<div id="controls">
+  <label>Prenda:</label>
+  <select id="sel-prenda" onchange="loadPreset(this.value)">
+    <option value="">— Seleccionar —</option>
+    <option value="blusa">Blusa básica</option>
+    <option value="falda">Falda recta</option>
+    <option value="pantalon">Pantalón</option>
+    <option value="custom">Personalizado</option>
+  </select>
+  <label style="margin-left:8px;">Talla base:</label>
+  <select id="sel-base" onchange="autoGraduate()">
+    <option value="2">4</option>
+    <option value="3">6</option>
+    <option value="4" selected>8 (S)</option>
+    <option value="5">10 (M)</option>
+    <option value="6">12 (L)</option>
+    <option value="7">14</option>
+  </select>
+  <label style="margin-left:8px;">Mostrar tallas:</label>
+  <select id="sel-show" onchange="render()" multiple style="height:50px;width:120px;">
+    <option value="0">4</option>
+    <option value="1">6</option>
+    <option value="2" selected>8 (S)</option>
+    <option value="3" selected>10 (M)</option>
+    <option value="4" selected>12 (L)</option>
+    <option value="5">14</option>
+    <option value="6">16</option>
+    <option value="7">18</option>
+    <option value="8">20</option>
+  </select>
+</div>
+
+<div id="canvas-wrap">
+  <canvas id="grad-canvas"></canvas>
+  <div id="legend"></div>
+</div>
+
+<div id="bottom">
+  <span style="font-size:10px;color:#555;">Pellizca para zoom · Arrastra para mover</span>
+  <button class="btn btn-gray" onclick="fitView()" style="margin-left:auto;">⊡ Ajustar vista</button>
+  <button class="btn btn-gray" onclick="toggleGrid()">⊞ Grilla</button>
+</div>
+
+<!-- ADD PATTERN MODAL -->
+<div id="modal-pattern" class="modal-bg hidden">
+  <div class="modal">
+    <h2>➕ Definir patrón base</h2>
+    <div class="tab-bar">
+      <button class="tab active" onclick="switchTab('piezas',this)">Piezas</button>
+      <button class="tab" onclick="switchTab('medidas',this)">Tabla de medidas</button>
+    </div>
+    <div id="tab-piezas">
+      <div id="pieces-container"></div>
+      <button class="btn btn-gray" onclick="addPieceForm()" style="width:100%;margin-top:8px;font-size:11px;">➕ Agregar pieza</button>
+    </div>
+    <div id="tab-medidas" class="hidden">
+      <p style="font-size:11px;color:#aaa;margin-bottom:8px;">Tabla de medidas de tu foto (valores ya cargados)</p>
+      <div style="overflow-x:auto;">
+        <table class="tbl" id="medidas-table"></table>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-gray" onclick="closeModal('modal-pattern')">Cancelar</button>
+      <button class="btn btn-green" onclick="confirmPattern()">✅ Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONSUMO MODAL -->
+<div id="modal-consumo" class="modal-bg hidden">
+  <div class="modal">
+    <h2>🧵 Calculadora de Consumo de Tela</h2>
+    <p style="font-size:11px;color:#aaa;margin-bottom:10px;">¿Cuántos metros de tela necesitas para un pedido?</p>
+    <div id="consumo-rows"></div>
+    <button class="btn btn-gray" onclick="addConsumoRow()" style="width:100%;margin-top:6px;font-size:11px;">➕ Agregar talla</button>
+    <label style="margin-top:10px;">Ancho de tela (cm):</label>
+    <select id="cons-tela">
+      <option value="90">90 cm</option>
+      <option value="110" selected>110 cm</option>
+      <option value="140">140 cm</option>
+      <option value="150">150 cm</option>
+    </select>
+    <label>Desperdicio estimado (%):</label>
+    <input type="number" id="cons-desp" value="12" min="5" max="30">
+    <div id="consumo-result" class="consumo-result hidden"></div>
+    <div class="modal-btns">
+      <button class="btn btn-gray" onclick="closeModal('modal-consumo')">Cerrar</button>
+      <button class="btn btn-green" onclick="calcConsumo()">🧮 Calcular</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── TABLA DE MEDIDAS (de la foto del cuadro) ─────────────────────────────
+const TALLAS = ['4','6','8 S','10 M','12 L','14','16','18','20'];
+const MEDIDAS = {
+  busto:    [80,84,88,92,96,100,104,108,112],
+  cintura:  [58,62,66,70,74,78,82,86,90],
+  cadera:   [84,88,92,96,100,104,108,112,116],
+  espalda:  [33,34,35,36,37,38,39,40,41],
+  hombro:   [11.5,12,12.5,13,13.5,14,14.5,15,15.5],
+  talleDel: [35,35.5,36,36.5,37,37.5,38,38.5,39],
+  largoBrazo:[54.5,55.5,56.5,57.5,58.5,59.5,60.5,61.5,62.5],
+};
+
+// Incrementos entre tallas para piezas del patrón (en cm)
+const INCR = {
+  blusa:    { del_w:2, del_h:0.5, esp_w:2, esp_h:0.5, manga_w:1, manga_h:1.5 },
+  falda:    { del_w:2, del_h:1,   esp_w:2, esp_h:1 },
+  pantalon: { del_w:2.5, del_h:1.5, esp_w:2.5, esp_h:1.5 },
+};
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let pieces = [];       // base pieces [{name, w, h, x, y}]
+let graduated = [];    // [{talla, color, pcs:[{name,x,y,w,h}]}]
+let viewScale=1, viewOffX=20, viewOffY=20;
+let showGrid = true;
+let pinching=false, pointers={}, pinchD0=0, viewScale0=1, viewOX0=0, viewOY0=0, pinchMX=0, pinchMY=0;
+let panning=false, panX0=0, panY0=0, pOX0=0, pOY0=0;
+const PX = 3; // px per cm
+
+const COLORS = ['#e53935','#ff6d00','#ffd600','#00c853','#00d4ff','#aa00ff','#ff4081','#8d6e63','#546e7a'];
+const canvas = document.getElementById('grad-canvas');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  const wrap = document.getElementById('canvas-wrap');
+  canvas.width  = wrap.clientWidth  * (devicePixelRatio||1);
+  canvas.height = wrap.clientHeight * (devicePixelRatio||1);
+  canvas.style.width  = wrap.clientWidth  + 'px';
+  canvas.style.height = wrap.clientHeight + 'px';
+  ctx.scale(devicePixelRatio||1, devicePixelRatio||1);
+  render();
+}
+
+// ─── PRESETS ─────────────────────────────────────────────────────────────────
+const PRESETS = {
+  blusa: [
+    {name:'Delantero', w:26, h:46},
+    {name:'Espalda',   w:26, h:44},
+    {name:'Manga',     w:18, h:58},
+    {name:'Cuello',    w:35, h:8},
+  ],
+  falda: [
+    {name:'Delantero', w:26, h:65},
+    {name:'Espalda',   w:26, h:63},
+  ],
+  pantalon: [
+    {name:'Del. Izq',  w:27, h:100},
+    {name:'Del. Der',  w:27, h:100},
+    {name:'Esp. Izq',  w:25, h:100},
+    {name:'Esp. Der',  w:25, h:100},
+  ],
+};
+
+function loadPreset(v) {
+  if (!v || v==='custom') return;
+  pieces = PRESETS[v].map((p,i) => ({...p, x:i*(p.w+2)*PX, y:0}));
+  autoGraduate();
+}
+
+// ─── AUTO GRADUACIÓN ─────────────────────────────────────────────────────────
+function autoGraduate() {
+  if (pieces.length===0) return;
+  const baseIdx = parseInt(document.getElementById('sel-base').value);
+  graduated = [];
+
+  TALLAS.forEach((t, ti) => {
+    const factor = (ti - baseIdx); // steps from base
+    // cada paso de talla: busto +4cm → ¼ busto = +1cm por lado en ancho
+    // alto crece ~0.5cm por talla en torso
+    const dW = factor * 1.0;  // +1cm ancho por paso (cuarto de busto)
+    const dH = factor * 0.5;  // +0.5cm alto por paso
+
+    const pcs = pieces.map((p, pi) => {
+      // manga crece diferente (más en largo)
+      const isManga = p.name.toLowerCase().includes('manga');
+      const isEspalda = p.name.toLowerCase().includes('espalda');
+      const fw = isManga ? factor*0.5 : dW;
+      const fh = isManga ? factor*1.5 : dH;
+      return {
+        name: p.name,
+        w: Math.max(5, p.w + fw),
+        h: Math.max(5, p.h + fh),
+        x: p.x, y: p.y,
+      };
+    });
+    graduated.push({ talla:t, color: COLORS[ti % COLORS.length], pcs });
+  });
+  renderLegend();
+  render();
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function render() {
+  const W = canvas.width  / (devicePixelRatio||1);
+  const H = canvas.height / (devicePixelRatio||1);
+  ctx.clearRect(0,0,W,H);
+  ctx.save();
+  ctx.translate(viewOffX, viewOffY);
+  ctx.scale(viewScale, viewScale);
+
+  // grid
+  if (showGrid) {
+    ctx.strokeStyle = '#ffffff0a';
+    ctx.lineWidth = 0.5/viewScale;
+    for (let x=0; x<2000; x+=10*PX) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,3000); ctx.stroke(); }
+    for (let y=0; y<3000; y+=10*PX) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(2000,y); ctx.stroke(); }
+    // cm labels
+    ctx.fillStyle='#ffffff22'; ctx.font=`${8/viewScale}px sans-serif`;
+    for (let x=0; x<2000; x+=10*PX) ctx.fillText((x/PX)+'cm', x+2, 10/viewScale);
+    for (let y=10*PX; y<3000; y+=10*PX) ctx.fillText((y/PX)+'cm', 2, y-2);
+  }
+
+  // get selected tallas
+  const sel = document.getElementById('sel-show');
+  const shown = new Set([...sel.selectedOptions].map(o=>parseInt(o.value)));
+
+  // draw from largest to smallest (so smallest is on top)
+  const order = [...shown].sort((a,b)=>b-a);
+
+  order.forEach(ti => {
+    if (ti >= graduated.length) return;
+    const g = graduated[ti];
+    g.pcs.forEach((p,pi) => {
+      const bx = (pieces[pi]?.x || pi*(p.w+4)*PX);
+      ctx.fillStyle = g.color + '33';
+      ctx.fillRect(bx, p.y, p.w*PX, p.h*PX);
+      ctx.strokeStyle = g.color;
+      ctx.lineWidth = (ti===parseInt(document.getElementById('sel-base').value)?2.5:1)/viewScale;
+      ctx.strokeRect(bx, p.y, p.w*PX, p.h*PX);
+      // label only on base
+      if (ti===parseInt(document.getElementById('sel-base').value)) {
+        ctx.fillStyle=g.color; ctx.font=`bold ${10/viewScale}px sans-serif`; ctx.textAlign='center';
+        ctx.fillText(p.name, bx+p.w*PX/2, p.y+p.h*PX/2);
+        ctx.font=`${8/viewScale}px sans-serif`;
+        ctx.fillText(p.w.toFixed(1)+'×'+p.h.toFixed(1)+'cm', bx+p.w*PX/2, p.y+p.h*PX/2+12/viewScale);
+        ctx.textAlign='left';
+      }
+    });
+  });
+
+  ctx.restore();
+}
+
+function renderLegend() {
+  const el = document.getElementById('legend');
+  const sel = document.getElementById('sel-show');
+  const shown = new Set([...sel.selectedOptions].map(o=>parseInt(o.value)));
+  el.innerHTML = TALLAS.map((t,i) =>
+    shown.has(i) ? `<div><div class="dot" style="background:${COLORS[i%COLORS.length]};"></div><span style="color:${COLORS[i%COLORS.length]}">${t}</span></div>` : ''
+  ).join('');
+}
+
+function fitView() {
+  viewScale=1; viewOffX=20; viewOffY=20; render();
+}
+function toggleGrid() { showGrid=!showGrid; render(); }
+
+// ─── CANVAS TOUCH ─────────────────────────────────────────────────────────────
+canvas.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  pointers[e.pointerId]=e;
+  if (Object.keys(pointers).length===2) {
+    panning=false; pinching=true;
+    const pts=Object.values(pointers);
+    pinchD0=Math.hypot(pts[1].clientX-pts[0].clientX,pts[1].clientY-pts[0].clientY);
+    viewScale0=viewScale; pOX0=viewOffX; pOY0=viewOffY;
+    pinchMX=(pts[0].clientX+pts[1].clientX)/2; pinchMY=(pts[0].clientY+pts[1].clientY)/2;
+    return;
+  }
+  panning=true; panX0=e.clientX; panY0=e.clientY; pOX0=viewOffX; pOY0=viewOffY;
+});
+canvas.addEventListener('pointermove', e => {
+  e.preventDefault(); pointers[e.pointerId]=e;
+  if (pinching && Object.keys(pointers).length>=2) {
+    const pts=Object.values(pointers);
+    const d=Math.hypot(pts[1].clientX-pts[0].clientX,pts[1].clientY-pts[0].clientY);
+    const ns=Math.max(0.3,Math.min(10,viewScale0*d/pinchD0));
+    const mx=(pts[0].clientX+pts[1].clientX)/2, my=(pts[0].clientY+pts[1].clientY)/2;
+    const rect=canvas.getBoundingClientRect();
+    const sx=mx-rect.left, sy=my-rect.top;
+    viewOffX=sx-(sx-pOX0)*ns/viewScale0+(mx-pinchMX);
+    viewOffY=sy-(sy-pOY0)*ns/viewScale0+(my-pinchMY);
+    viewScale=ns; render(); return;
+  }
+  if (!panning) return;
+  viewOffX=pOX0+(e.clientX-panX0); viewOffY=pOY0+(e.clientY-panY0); render();
+});
+canvas.addEventListener('pointerup', e => { delete pointers[e.pointerId]; if(Object.keys(pointers).length<2) pinching=false; panning=false; });
+canvas.addEventListener('pointercancel', e => { delete pointers[e.pointerId]; panning=false; pinching=false; });
+
+// ─── MODAL PATTERN ───────────────────────────────────────────────────────────
+let pieceFormCount=0;
+function showAddPattern() {
+  pieceFormCount=0;
+  document.getElementById('pieces-container').innerHTML='';
+  if (pieces.length>0) pieces.forEach(p=>addPieceForm(p.name,p.w,p.h));
+  else { addPieceForm('Delantero',26,46); addPieceForm('Espalda',26,44); addPieceForm('Manga',18,58); }
+  buildMedidasTable();
+  document.getElementById('modal-pattern').classList.remove('hidden');
+}
+
+function addPieceForm(name='',w='',h='') {
+  pieceFormCount++;
+  const d=document.createElement('div');
+  d.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:6px;';
+  d.innerHTML=`<input type="text" placeholder="Nombre pieza" value="${name}" style="flex:2;padding:5px;background:#0f3460;color:#fff;border:1px solid #00d4ff22;border-radius:6px;">
+    <input type="number" placeholder="Ancho" value="${w}" style="flex:1;padding:5px;background:#0f3460;color:#fff;border:1px solid #00d4ff22;border-radius:6px;">
+    <input type="number" placeholder="Alto" value="${h}" style="flex:1;padding:5px;background:#0f3460;color:#fff;border:1px solid #00d4ff22;border-radius:6px;">
+    <button onclick="this.parentElement.remove()" style="background:#e5393555;border:none;color:#fff;border-radius:6px;padding:4px 8px;cursor:pointer;">✕</button>`;
+  document.getElementById('pieces-container').appendChild(d);
+}
+
+function confirmPattern() {
+  pieces=[];
+  document.getElementById('pieces-container').querySelectorAll('div').forEach((row,i)=>{
+    const ins=row.querySelectorAll('input');
+    const w=parseFloat(ins[1].value)||20, h=parseFloat(ins[2].value)||30;
+    pieces.push({name:ins[0].value||'Pieza'+(i+1), w, h, x:i*(w+4)*PX, y:0});
+  });
+  closeModal('modal-pattern');
+  autoGraduate();
+}
+
+function buildMedidasTable() {
+  const t=document.getElementById('medidas-table');
+  const keys=Object.keys(MEDIDAS);
+  const labels={busto:'Busto',cintura:'Cintura',cadera:'Cadera',espalda:'Espalda',hombro:'Hombro',talleDel:'Talle Del.',largoBrazo:'Largo Brazo'};
+  t.innerHTML=`<tr><th>Medida</th>${TALLAS.map(t=>`<th>${t}</th>`).join('')}</tr>`+
+    keys.map(k=>`<tr><td style="text-align:left;padding-left:4px;color:#aaa">${labels[k]}</td>${MEDIDAS[k].map((v,i)=>`<td><input type="number" value="${v}" step="0.5" onchange="MEDIDAS['${k}'][${i}]=parseFloat(this.value)"></td>`).join('')}</tr>`).join('');
+}
+
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-piezas').classList.toggle('hidden', tab!=='piezas');
+  document.getElementById('tab-medidas').classList.toggle('hidden', tab!=='medidas');
+}
+
+// ─── CONSUMO ──────────────────────────────────────────────────────────────────
+let consumoRowCount=0;
+function showConsumo() {
+  document.getElementById('consumo-rows').innerHTML='';
+  consumoRowCount=0;
+  addConsumoRow('8 S',2); addConsumoRow('10 M',3); addConsumoRow('12 L',2);
+  document.getElementById('consumo-result').classList.add('hidden');
+  document.getElementById('modal-consumo').classList.remove('hidden');
+}
+
+function addConsumoRow(talla='', qty=1) {
+  consumoRowCount++;
+  const d=document.createElement('div'); d.className='consumo-row';
+  d.innerHTML=`<label>Talla:</label>
+    <select style="width:80px;">
+      ${TALLAS.map(t=>`<option value="${t}" ${t===talla?'selected':''}>${t}</option>`).join('')}
+    </select>
+    <label>Unidades:</label>
+    <input type="number" value="${qty}" min="1" style="width:55px;">
+    <button onclick="this.parentElement.remove()" style="background:#e5393555;border:none;color:#fff;border-radius:6px;padding:3px 8px;cursor:pointer;margin-left:auto;">✕</button>`;
+  document.getElementById('consumo-rows').appendChild(d);
+}
+
+function calcConsumo() {
+  const rows=document.getElementById('consumo-rows').querySelectorAll('.consumo-row');
+  const telaCm=parseInt(document.getElementById('cons-tela').value);
+  const desp=1+(parseInt(document.getElementById('cons-desp').value)||12)/100;
+  if (pieces.length===0) { alert('Define primero un patrón'); return; }
+
+  let totalMetros=0, detail='';
+  rows.forEach(row=>{
+    const tallaVal=row.querySelector('select').value;
+    const qty=parseInt(row.querySelector('input').value)||1;
+    const ti=TALLAS.indexOf(tallaVal);
+    const g=graduated[ti];
+    if (!g) return;
+    // calc cm largo per unit: max height of pieces + 2cm seam
+    const largoUnit=Math.max(...g.pcs.map(p=>p.h)) + 2;
+    const metros=(largoUnit/100)*qty*desp;
+    totalMetros+=metros;
+    detail+=`<div style="font-size:11px;color:#aaa">Talla ${tallaVal} × ${qty} uds = ${metros.toFixed(2)} m</div>`;
+  });
+
+  const precio_m=parseFloat(prompt('Precio por metro de tela (COP)? (0 para omitir)','12000')||'0');
+  const resEl=document.getElementById('consumo-result');
+  resEl.classList.remove('hidden');
+  resEl.innerHTML=`${detail}
+    <div style="margin-top:8px;font-size:14px;font-weight:bold;color:#00c853">
+      📦 Total: <b>${totalMetros.toFixed(2)} metros</b> (tela ${telaCm}cm)
+    </div>`
+    +(precio_m>0?`<div style="font-size:13px;color:#ffd600;margin-top:4px;">💰 Costo tela: <b>$${(totalMetros*precio_m).toLocaleString('es-CO')}</b></div>`:'');
+}
+
+// ─── EXPORT TO NESTING ────────────────────────────────────────────────────────
+function exportToNesting() {
+  if (graduated.length===0) { alert('Primero gradúa el patrón'); return; }
+  const sel=document.getElementById('sel-show');
+  const shown=[...sel.selectedOptions].map(o=>parseInt(o.value));
+  const data={ tallas: shown.map(ti=>({ talla:TALLAS[ti], pieces:graduated[ti].pcs })) };
+  const json=JSON.stringify(data);
+  const blob=new Blob([`
+<!DOCTYPE html><html><head><meta charset="UTF-8"><script>
+window.GRAD_DATA=${json};
+<\/script></head><body>
+<script>
+  // auto-open nesting app and load this data
+  alert("Datos listos: "+${json}.tallas.length+" tallas para cargar en el Nesting");
+<\/script></body></html>`], {type:'text/html'});
+  const link=document.createElement('a'); link.href=URL.createObjectURL(blob);
+  link.download='graduacion-para-nesting.html'; link.click();
+}
+
+function closeModal(id){document.getElementById(id).classList.add('hidden');}
+window.addEventListener('resize',resize);
+resize();
+
+// Load blusa by default
+loadPreset('blusa');
+</script>
+</body>
+</html>
