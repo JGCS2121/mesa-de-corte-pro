@@ -1,0 +1,351 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de Costos - Mesa de Corte</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#1a1a2e; color:#fff; font-family:sans-serif; min-height:100vh; }
+
+#header { background:#16213e; padding:10px 14px; border-bottom:2px solid #0f3460; display:flex; align-items:center; gap:10px; }
+#header h1 { font-size:14px; color:#00d4ff; }
+
+.section { background:#16213e; border-radius:12px; margin:10px; padding:14px; border:1px solid #0f346044; }
+.section h2 { font-size:13px; color:#00d4ff; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+
+label { font-size:11px; color:#aaa; display:block; margin-bottom:3px; margin-top:8px; }
+input, select { width:100%; padding:8px; background:#0f3460; color:#fff; border:1px solid #00d4ff33; border-radius:8px; font-size:13px; }
+.row2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
+
+.btn { width:100%; padding:10px; border:none; border-radius:10px; font-size:13px; font-weight:bold; cursor:pointer; margin-top:8px; }
+.btn-green  { background:#00c853; color:#000; }
+.btn-cyan   { background:#00d4ff; color:#000; }
+.btn-orange { background:#ff6d00; color:#fff; }
+
+/* RESULT CARD */
+.result-card { background:#0f3460; border-radius:12px; padding:14px; margin-top:10px; display:none; }
+.result-card h3 { color:#ffd600; margin-bottom:10px; font-size:13px; }
+.cost-row { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid #ffffff11; font-size:12px; }
+.cost-row .name { color:#aaa; }
+.cost-row .val  { color:#fff; font-weight:bold; }
+.cost-total { margin-top:10px; padding:10px; background:#00c85322; border:1px solid #00c853; border-radius:8px; display:flex; justify-content:space-between; align-items:center; }
+.cost-total .label { font-size:12px; color:#aaa; }
+.cost-total .amount { font-size:18px; font-weight:bold; color:#00c853; }
+.precio-venta { margin-top:8px; padding:10px; background:#ffd60022; border:1px solid #ffd600; border-radius:8px; }
+.precio-venta .pv-row { display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; }
+.precio-venta .pv-total { display:flex; justify-content:space-between; font-size:16px; font-weight:bold; color:#ffd600; margin-top:6px; }
+
+/* TALLAS TABLE */
+.tallas-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:6px; }
+.talla-chip { background:#0f3460; border:1px solid #00d4ff22; border-radius:8px; padding:6px; text-align:center; }
+.talla-chip label { color:#aaa; font-size:10px; margin:0 0 2px 0; }
+.talla-chip input { text-align:center; font-size:12px; padding:4px; }
+
+/* CONSUMO REF TABLE */
+.ref-table { width:100%; border-collapse:collapse; font-size:11px; margin-top:8px; }
+.ref-table th { background:#0f3460; padding:5px; text-align:center; }
+.ref-table td { padding:4px 5px; text-align:center; border-bottom:1px solid #ffffff08; color:#aaa; }
+.ref-table td:first-child { text-align:left; color:#fff; }
+
+.badge { display:inline-block; padding:2px 8px; border-radius:12px; font-size:10px; font-weight:bold; }
+.badge-green { background:#00c85333; color:#00c853; border:1px solid #00c853; }
+.badge-yellow { background:#ffd60033; color:#ffd600; border:1px solid #ffd600; }
+.badge-red { background:#e5393533; color:#e53935; border:1px solid #e53935; }
+
+.history-item { background:#0f3460; border-radius:8px; padding:8px 10px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; }
+.history-item .hi-name { font-size:12px; }
+.history-item .hi-price { font-size:13px; font-weight:bold; color:#00c853; }
+.history-item .hi-sub { font-size:10px; color:#aaa; }
+/* FIX: restore touch events for interactive elements */
+button, .btn, .tool-btn, .mirror-btn, .color-dot,
+select, input, textarea, a, label, [onclick] {
+  touch-action: manipulation !important;
+  cursor: pointer;
+}</style>
+</head>
+<body>
+
+<div id="header">
+  <span style="font-size:20px;">💰</span>
+  <div>
+    <h1>Calculadora de Costos de Prenda</h1>
+    <div style="font-size:10px;color:#aaa;">Mesa de corte → precio de venta</div>
+  </div>
+</div>
+
+<!-- PRENDA BASE -->
+<div class="section">
+  <h2>🧾 Datos de la prenda</h2>
+  <div class="row2">
+    <div>
+      <label>Nombre / Referencia</label>
+      <input type="text" id="ref-nombre" placeholder="Ej: Blusa básica ref 431">
+    </div>
+    <div>
+      <label>Tipo de prenda</label>
+      <select id="ref-tipo" onchange="loadConsumoRef()">
+        <option value="blusa">Blusa</option>
+        <option value="camiseta">Camiseta</option>
+        <option value="falda">Falda</option>
+        <option value="pantalon">Pantalón</option>
+        <option value="vestido">Vestido</option>
+        <option value="chaqueta">Chaqueta</option>
+        <option value="custom">Personalizado</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- TELA -->
+<div class="section">
+  <h2>🧵 Consumo de tela</h2>
+  <div class="row3">
+    <div>
+      <label>Ancho tela</label>
+      <select id="tela-ancho">
+        <option value="90">90 cm</option>
+        <option value="110" selected>110 cm</option>
+        <option value="140">140 cm</option>
+        <option value="150">150 cm</option>
+      </select>
+    </div>
+    <div>
+      <label>Metros/unidad</label>
+      <input type="number" id="tela-metros" value="1.5" step="0.1" min="0.3">
+    </div>
+    <div>
+      <label>Precio/metro $</label>
+      <input type="number" id="tela-precio" value="12000" step="500">
+    </div>
+  </div>
+  <div style="margin-top:8px;">
+    <label>📊 Referencia consumo típico por tipo de prenda:</label>
+    <table class="ref-table" id="ref-table">
+      <tr><th>Prenda</th><th>90 cm</th><th>110 cm</th><th>140 cm</th></tr>
+      <tr><td>Blusa</td><td>1.8 m</td><td>1.5 m</td><td>1.2 m</td></tr>
+      <tr><td>Camiseta</td><td>1.6 m</td><td>1.3 m</td><td>1.1 m</td></tr>
+      <tr><td>Falda midi</td><td>1.5 m</td><td>1.3 m</td><td>1.0 m</td></tr>
+      <tr><td>Pantalón</td><td>2.8 m</td><td>2.4 m</td><td>2.0 m</td></tr>
+      <tr><td>Vestido</td><td>2.5 m</td><td>2.2 m</td><td>1.8 m</td></tr>
+      <tr><td>Chaqueta</td><td>2.2 m</td><td>1.9 m</td><td>1.6 m</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- OTROS COSTOS -->
+<div class="section">
+  <h2>🪡 Insumos y confección</h2>
+  <div class="row2">
+    <div>
+      <label>Hilo + insumos $</label>
+      <input type="number" id="cost-hilo" value="2500" step="100">
+    </div>
+    <div>
+      <label>Botones / cierre $</label>
+      <input type="number" id="cost-accesorios" value="1500" step="100">
+    </div>
+    <div>
+      <label>Mano de obra $</label>
+      <input type="number" id="cost-mano" value="15000" step="500">
+    </div>
+    <div>
+      <label>Etiqueta / empaque $</label>
+      <input type="number" id="cost-empaque" value="800" step="100">
+    </div>
+    <div>
+      <label>Transporte / envío $</label>
+      <input type="number" id="cost-envio" value="0" step="500">
+    </div>
+    <div>
+      <label>Otros costos $</label>
+      <input type="number" id="cost-otros" value="0" step="500">
+    </div>
+  </div>
+</div>
+
+<!-- MARGEN -->
+<div class="section">
+  <h2>📈 Precio de venta</h2>
+  <div class="row3">
+    <div>
+      <label>Ganancia deseada %</label>
+      <input type="number" id="margen" value="60" min="10" max="500">
+    </div>
+    <div>
+      <label>Precio mayorista %</label>
+      <input type="number" id="margen-may" value="30" min="5" max="200">
+    </div>
+    <div>
+      <label>Descuento max %</label>
+      <input type="number" id="descuento" value="15" min="0" max="50">
+    </div>
+  </div>
+
+  <button class="btn btn-green" onclick="calcular()">🧮 Calcular precio de venta</button>
+
+  <!-- RESULT -->
+  <div class="result-card" id="result-card">
+    <h3>📋 Desglose de costos — <span id="res-nombre"></span></h3>
+    <div class="cost-row"><span class="name">🧵 Tela (<span id="res-metros"></span> m × $<span id="res-pxm"></span>)</span><span class="val" id="res-tela">$0</span></div>
+    <div class="cost-row"><span class="name">🪡 Hilo + insumos</span><span class="val" id="res-hilo">$0</span></div>
+    <div class="cost-row"><span class="name">🔩 Accesorios</span><span class="val" id="res-acc">$0</span></div>
+    <div class="cost-row"><span class="name">✂️ Mano de obra</span><span class="val" id="res-mano">$0</span></div>
+    <div class="cost-row"><span class="name">📦 Etiqueta / empaque</span><span class="val" id="res-emp">$0</span></div>
+    <div class="cost-row"><span class="name">🚚 Transporte</span><span class="val" id="res-env">$0</span></div>
+    <div class="cost-row"><span class="name">📌 Otros</span><span class="val" id="res-otros">$0</span></div>
+
+    <div class="cost-total">
+      <div>
+        <div class="label">Costo total de producción</div>
+        <div style="font-size:10px;color:#555;">Por unidad</div>
+      </div>
+      <div class="amount" id="res-costo-total">$0</div>
+    </div>
+
+    <div class="precio-venta">
+      <div class="pv-row"><span>Precio minorista (<span id="res-margen-pct"></span>% ganancia)</span><span id="pv-minorista" style="color:#fff;font-weight:bold;"></span></div>
+      <div class="pv-row"><span>Precio mayorista (<span id="res-may-pct"></span>% ganancia)</span><span id="pv-mayorista" style="color:#fff;"></span></div>
+      <div class="pv-row"><span>Precio mínimo (sin ganar nada)</span><span id="pv-minimo" style="color:#e53935;"></span></div>
+      <div class="pv-row"><span>Precio con descuento max (<span id="res-desc-pct"></span>%)</span><span id="pv-descuento" style="color:#aaa;"></span></div>
+      <div class="pv-total"><span>💲 Precio de venta recomendado</span><span id="pv-recomendado">$0</span></div>
+    </div>
+
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+      <span id="badge-margen" class="badge"></span>
+      <span id="badge-competitivo" class="badge"></span>
+    </div>
+
+    <button class="btn btn-cyan" onclick="guardarHistorial()" style="margin-top:10px;">💾 Guardar en historial</button>
+  </div>
+</div>
+
+<!-- HISTORIAL -->
+<div class="section" id="section-historial" style="display:none;">
+  <h2>📚 Historial de precios</h2>
+  <div id="historial-list"></div>
+  <button class="btn btn-orange" onclick="clearHistorial()" style="margin-top:6px;">🗑 Limpiar</button>
+</div>
+
+<script>
+// Consumos de referencia por tipo de prenda y ancho de tela
+const CONSUMO_REF = {
+  blusa:    {90:1.8, 110:1.5, 140:1.2, 150:1.1},
+  camiseta: {90:1.6, 110:1.3, 140:1.1, 150:1.0},
+  falda:    {90:1.5, 110:1.3, 140:1.0, 150:0.9},
+  pantalon: {90:2.8, 110:2.4, 140:2.0, 150:1.9},
+  vestido:  {90:2.5, 110:2.2, 140:1.8, 150:1.7},
+  chaqueta: {90:2.2, 110:1.9, 140:1.6, 150:1.5},
+  custom:   {90:1.5, 110:1.3, 140:1.1, 150:1.0},
+};
+
+function loadConsumoRef() {
+  const tipo = document.getElementById('ref-tipo').value;
+  const ancho = parseInt(document.getElementById('tela-ancho').value);
+  const metros = CONSUMO_REF[tipo]?.[ancho] || 1.5;
+  document.getElementById('tela-metros').value = metros;
+}
+
+document.getElementById('tela-ancho').addEventListener('change', loadConsumoRef);
+
+function fmt(n) {
+  return '$' + Math.round(n).toLocaleString('es-CO');
+}
+
+function calcular() {
+  const metros    = parseFloat(document.getElementById('tela-metros').value) || 1.5;
+  const precioM   = parseFloat(document.getElementById('tela-precio').value) || 12000;
+  const hilo      = parseFloat(document.getElementById('cost-hilo').value) || 0;
+  const acc       = parseFloat(document.getElementById('cost-accesorios').value) || 0;
+  const mano      = parseFloat(document.getElementById('cost-mano').value) || 0;
+  const emp       = parseFloat(document.getElementById('cost-empaque').value) || 0;
+  const envio     = parseFloat(document.getElementById('cost-envio').value) || 0;
+  const otros     = parseFloat(document.getElementById('cost-otros').value) || 0;
+  const margen    = parseFloat(document.getElementById('margen').value) || 60;
+  const margenMay = parseFloat(document.getElementById('margen-may').value) || 30;
+  const desc      = parseFloat(document.getElementById('descuento').value) || 15;
+  const nombre    = document.getElementById('ref-nombre').value || 'Sin nombre';
+
+  const costTela = metros * precioM;
+  const costoTotal = costTela + hilo + acc + mano + emp + envio + otros;
+
+  const pvMinorista  = costoTotal * (1 + margen/100);
+  const pvMayorista  = costoTotal * (1 + margenMay/100);
+  const pvMinimo     = costoTotal;
+  const pvDescuento  = pvMinorista * (1 - desc/100);
+
+  // show result
+  document.getElementById('res-nombre').textContent = nombre;
+  document.getElementById('res-metros').textContent = metros;
+  document.getElementById('res-pxm').textContent = Math.round(precioM).toLocaleString('es-CO');
+  document.getElementById('res-tela').textContent = fmt(costTela);
+  document.getElementById('res-hilo').textContent = fmt(hilo);
+  document.getElementById('res-acc').textContent = fmt(acc);
+  document.getElementById('res-mano').textContent = fmt(mano);
+  document.getElementById('res-emp').textContent = fmt(emp);
+  document.getElementById('res-env').textContent = fmt(envio);
+  document.getElementById('res-otros').textContent = fmt(otros);
+  document.getElementById('res-costo-total').textContent = fmt(costoTotal);
+  document.getElementById('res-margen-pct').textContent = margen;
+  document.getElementById('res-may-pct').textContent = margenMay;
+  document.getElementById('res-desc-pct').textContent = desc;
+  document.getElementById('pv-minorista').textContent = fmt(pvMinorista);
+  document.getElementById('pv-mayorista').textContent = fmt(pvMayorista);
+  document.getElementById('pv-minimo').textContent = fmt(pvMinimo);
+  document.getElementById('pv-descuento').textContent = fmt(pvDescuento);
+  document.getElementById('pv-recomendado').textContent = fmt(pvMinorista);
+
+  // badges
+  const bm = document.getElementById('badge-margen');
+  if (margen >= 60) { bm.textContent = '✅ Margen saludable'; bm.className='badge badge-green'; }
+  else if (margen >= 35) { bm.textContent = '⚠️ Margen bajo'; bm.className='badge badge-yellow'; }
+  else { bm.textContent = '🔴 Margen muy bajo'; bm.className='badge badge-red'; }
+
+  const bc = document.getElementById('badge-competitivo');
+  if (pvMinorista < 50000) { bc.textContent = '🟢 Precio accesible'; bc.className='badge badge-green'; }
+  else if (pvMinorista < 120000) { bc.textContent = '🟡 Precio medio'; bc.className='badge badge-yellow'; }
+  else { bc.textContent = '🔴 Precio premium'; bc.className='badge badge-red'; }
+
+  document.getElementById('result-card').style.display='block';
+  // save last calc
+  window._lastCalc = { nombre, tipo: document.getElementById('ref-tipo').value, costoTotal, pvMinorista, pvMayorista, metros, precioM, margen };
+}
+
+function guardarHistorial() {
+  const c = window._lastCalc;
+  if (!c) return;
+  let hist = JSON.parse(localStorage.getItem('cost_historial')||'[]');
+  hist.unshift({ ...c, fecha: new Date().toLocaleDateString('es-CO') });
+  if (hist.length > 30) hist = hist.slice(0,30);
+  localStorage.setItem('cost_historial', JSON.stringify(hist));
+  renderHistorial();
+}
+
+function renderHistorial() {
+  const hist = JSON.parse(localStorage.getItem('cost_historial')||'[]');
+  const sec = document.getElementById('section-historial');
+  const el = document.getElementById('historial-list');
+  if (hist.length===0) { sec.style.display='none'; return; }
+  sec.style.display='block';
+  el.innerHTML = hist.map(h=>`
+    <div class="history-item">
+      <div>
+        <div class="hi-name">${h.nombre} · <span style="color:#aaa;font-size:10px;">${h.tipo}</span></div>
+        <div class="hi-sub">Costo: $${Math.round(h.costoTotal).toLocaleString('es-CO')} · ${h.metros}m tela · ${h.fecha}</div>
+      </div>
+      <div class="hi-price">$${Math.round(h.pvMinorista).toLocaleString('es-CO')}</div>
+    </div>`).join('');
+}
+
+function clearHistorial() {
+  localStorage.removeItem('cost_historial');
+  renderHistorial();
+}
+
+// init
+renderHistorial();
+loadConsumoRef();
+</script>
+</body>
+</html>
