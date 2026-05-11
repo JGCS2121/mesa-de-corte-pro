@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_home"
+        android:icon="@android:drawable/ic_menu_today"
+        android:title="Inicio" />
+    <item
+        android:id="@+id/nav_trazador"
+        android:icon="@android:drawable/ic_menu_edit"
+        android:title="Trazador" />
+    <item
+        android:id="@+id/nav_nesting"
+        android:icon="@android:drawable/ic_menu_sort_by_size"
+        android:title="Nesting" />
+    <item
+        android:id="@+id/nav_tallas"
+        android:icon="@android:drawable/ic_menu_agenda"
+        android:title="Tallas" />
+    <item
+        android:id="@+id/nav_costos"
+        android:icon="@android:drawable/ic_menu_manage"
+        android:title="Costos" />
+</menu>
