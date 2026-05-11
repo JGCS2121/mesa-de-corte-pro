@@ -1,40 +1,11 @@
 ﻿<!DOCTYPE html>
 <html lang="es">
-<head><script>
-// CRITICAL FIX: Enable touch events for all interactive elements
-document.addEventListener('DOMContentLoaded', function() {
-  // Fix touch-action on all interactive elements
-  var interactive = document.querySelectorAll('button, a, select, input, textarea, [onclick], .btn, .tool-btn, .mirror-btn, .color-dot, .lib-item, .lib-item-del');
-  interactive.forEach(function(el) {
-    el.style.touchAction = 'manipulation';
-    el.style.webkitUserSelect = 'none';
-    el.style.cursor = 'pointer';
-  });
-
-  // Fix: ensure canvas elements keep touch-action:none for drawing
-  document.querySelectorAll('canvas').forEach(function(c) {
-    c.style.touchAction = 'none';
-  });
-
-  // Fix: simulate click on touchend for buttons that may not respond
-  document.addEventListener('touchend', function(e) {
-    var el = e.target;
-    while (el && el !== document.body) {
-      if (el.tagName === 'BUTTON' || el.hasAttribute('onclick') || el.classList.contains('btn') || el.classList.contains('tool-btn') || el.classList.contains('mirror-btn') || el.classList.contains('color-dot')) {
-        e.preventDefault();
-        el.click();
-        return;
-      }
-      el = el.parentElement;
-    }
-  }, { passive: false });
-});
-</script>
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Trazador de Patrones v4</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; touch-action: auto; }
+  * { margin:0; padding:0; box-sizing:border-box;  }
   body { background:#1a1a2e; color:#fff; font-family:sans-serif; overflow:hidden; height:100vh; display:flex; flex-direction:column; }
 
   /* HEADER */
@@ -1074,35 +1045,21 @@ function placeImportedImage() {
 </div>
 
 <script>
-// =====================================================
-// SOPORTE TACTIL COMPLETO PARA CANVAS Y BOTONES
-// =====================================================
+// Fix para WebView Android: asegurar que el canvas superior recibe todos los eventos
 (function() {
-  function addTouchSupport(canvas) {
-    function touchHandler(event) {
-      event.preventDefault();
-      var touch = event.changedTouches[0];
-      var typeMap = { touchstart: 'mousedown', touchmove: 'mousemove', touchend: 'mouseup' };
-      var mouseEvent = new MouseEvent(typeMap[event.type], {
-        bubbles: true,
-        cancelable: true,
-        view: window,
-        clientX: touch.clientX,
-        clientY: touch.clientY
-      });
-      touch.target.dispatchEvent(mouseEvent);
-    }
-    canvas.addEventListener('touchstart', touchHandler, { passive: false });
-    canvas.addEventListener('touchmove', touchHandler, { passive: false });
-    canvas.addEventListener('touchend', touchHandler, { passive: false });
-  }
-  function applyToAll() {
-    document.querySelectorAll('canvas').forEach(addTouchSupport);
+  function fixCanvases() {
+    ['canvas-base','canvas-draw','canvas-ui'].forEach(function(id) {
+      var c = document.getElementById(id);
+      if (c) {
+        c.style.touchAction = 'none';
+        c.style.webkitUserSelect = 'none';
+      }
+    });
   }
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', applyToAll);
+    document.addEventListener('DOMContentLoaded', fixCanvases);
   } else {
-    applyToAll();
+    fixCanvases();
   }
 })();
 </script></body>

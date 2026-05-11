@@ -1,35 +1,6 @@
 ﻿<!DOCTYPE html>
 <html lang="es">
-<head><script>
-// CRITICAL FIX: Enable touch events for all interactive elements
-document.addEventListener('DOMContentLoaded', function() {
-  // Fix touch-action on all interactive elements
-  var interactive = document.querySelectorAll('button, a, select, input, textarea, [onclick], .btn, .tool-btn, .mirror-btn, .color-dot, .lib-item, .lib-item-del');
-  interactive.forEach(function(el) {
-    el.style.touchAction = 'manipulation';
-    el.style.webkitUserSelect = 'none';
-    el.style.cursor = 'pointer';
-  });
-
-  // Fix: ensure canvas elements keep touch-action:none for drawing
-  document.querySelectorAll('canvas').forEach(function(c) {
-    c.style.touchAction = 'none';
-  });
-
-  // Fix: simulate click on touchend for buttons that may not respond
-  document.addEventListener('touchend', function(e) {
-    var el = e.target;
-    while (el && el !== document.body) {
-      if (el.tagName === 'BUTTON' || el.hasAttribute('onclick') || el.classList.contains('btn') || el.classList.contains('tool-btn') || el.classList.contains('mirror-btn') || el.classList.contains('color-dot')) {
-        e.preventDefault();
-        el.click();
-        return;
-      }
-      el = el.parentElement;
-    }
-  }, { passive: false });
-});
-</script>
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Calculadora de Costos - Mesa de Corte</title>

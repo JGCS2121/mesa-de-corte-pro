@@ -2,6 +2,7 @@ package com.mesadecorte.pro;
 
 import android.app.AlertDialog;
 import android.content.pm.ActivityInfo;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.webkit.WebSettings;
@@ -37,6 +38,11 @@ public class MainActivity extends AppCompatActivity {
 
         // Cargar pestaña inicial
         switchTab(R.id.nav_home);
+
+        // Crítico para pointer events en WebView
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
     }
 
     private void setupWebViews() {
