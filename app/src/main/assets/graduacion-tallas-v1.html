@@ -1,6 +1,35 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
-<head>
+<head><script>
+// CRITICAL FIX: Enable touch events for all interactive elements
+document.addEventListener('DOMContentLoaded', function() {
+  // Fix touch-action on all interactive elements
+  var interactive = document.querySelectorAll('button, a, select, input, textarea, [onclick], .btn, .tool-btn, .mirror-btn, .color-dot, .lib-item, .lib-item-del');
+  interactive.forEach(function(el) {
+    el.style.touchAction = 'manipulation';
+    el.style.webkitUserSelect = 'none';
+    el.style.cursor = 'pointer';
+  });
+
+  // Fix: ensure canvas elements keep touch-action:none for drawing
+  document.querySelectorAll('canvas').forEach(function(c) {
+    c.style.touchAction = 'none';
+  });
+
+  // Fix: simulate click on touchend for buttons that may not respond
+  document.addEventListener('touchend', function(e) {
+    var el = e.target;
+    while (el && el !== document.body) {
+      if (el.tagName === 'BUTTON' || el.hasAttribute('onclick') || el.classList.contains('btn') || el.classList.contains('tool-btn') || el.classList.contains('mirror-btn') || el.classList.contains('color-dot')) {
+        e.preventDefault();
+        el.click();
+        return;
+      }
+      el = el.parentElement;
+    }
+  }, { passive: false });
+});
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Graduación Automática de Tallas</title>
@@ -52,7 +81,12 @@ select, input[type=number] { background:#0f3460; color:#fff; border:1px solid #0
 .consumo-row label { color:#aaa; font-size:11px; margin:0; }
 .consumo-row input, .consumo-row select { width:70px; margin:0; }
 .consumo-result { background:#00c85322; border:1px solid #00c853; border-radius:8px; padding:10px; font-size:13px; margin-top:8px; }
-</style>
+/* FIX: restore touch events for interactive elements */
+button, .btn, .tool-btn, .mirror-btn, .color-dot,
+select, input, textarea, a, label, [onclick] {
+  touch-action: manipulation !important;
+  cursor: pointer;
+}</style>
 </head>
 <body>
 
@@ -470,7 +504,36 @@ function exportToNesting() {
   const data={ tallas: shown.map(ti=>({ talla:TALLAS[ti], pieces:graduated[ti].pcs })) };
   const json=JSON.stringify(data);
   const blob=new Blob([`
-<!DOCTYPE html><html><head><meta charset="UTF-8"><script>
+<!DOCTYPE html><html><head><script>
+// CRITICAL FIX: Enable touch events for all interactive elements
+document.addEventListener('DOMContentLoaded', function() {
+  // Fix touch-action on all interactive elements
+  var interactive = document.querySelectorAll('button, a, select, input, textarea, [onclick], .btn, .tool-btn, .mirror-btn, .color-dot, .lib-item, .lib-item-del');
+  interactive.forEach(function(el) {
+    el.style.touchAction = 'manipulation';
+    el.style.webkitUserSelect = 'none';
+    el.style.cursor = 'pointer';
+  });
+
+  // Fix: ensure canvas elements keep touch-action:none for drawing
+  document.querySelectorAll('canvas').forEach(function(c) {
+    c.style.touchAction = 'none';
+  });
+
+  // Fix: simulate click on touchend for buttons that may not respond
+  document.addEventListener('touchend', function(e) {
+    var el = e.target;
+    while (el && el !== document.body) {
+      if (el.tagName === 'BUTTON' || el.hasAttribute('onclick') || el.classList.contains('btn') || el.classList.contains('tool-btn') || el.classList.contains('mirror-btn') || el.classList.contains('color-dot')) {
+        e.preventDefault();
+        el.click();
+        return;
+      }
+      el = el.parentElement;
+    }
+  }, { passive: false });
+});
+</script><meta charset="UTF-8"><script>
 window.GRAD_DATA=${json};
 <\/script></head><body>
 <script>

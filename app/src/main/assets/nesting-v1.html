@@ -1,11 +1,40 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
-<head>
+<head><script>
+// CRITICAL FIX: Enable touch events for all interactive elements
+document.addEventListener('DOMContentLoaded', function() {
+  // Fix touch-action on all interactive elements
+  var interactive = document.querySelectorAll('button, a, select, input, textarea, [onclick], .btn, .tool-btn, .mirror-btn, .color-dot, .lib-item, .lib-item-del');
+  interactive.forEach(function(el) {
+    el.style.touchAction = 'manipulation';
+    el.style.webkitUserSelect = 'none';
+    el.style.cursor = 'pointer';
+  });
+
+  // Fix: ensure canvas elements keep touch-action:none for drawing
+  document.querySelectorAll('canvas').forEach(function(c) {
+    c.style.touchAction = 'none';
+  });
+
+  // Fix: simulate click on touchend for buttons that may not respond
+  document.addEventListener('touchend', function(e) {
+    var el = e.target;
+    while (el && el !== document.body) {
+      if (el.tagName === 'BUTTON' || el.hasAttribute('onclick') || el.classList.contains('btn') || el.classList.contains('tool-btn') || el.classList.contains('mirror-btn') || el.classList.contains('color-dot')) {
+        e.preventDefault();
+        el.click();
+        return;
+      }
+      el = el.parentElement;
+    }
+  }, { passive: false });
+});
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Optimizador de Tela - Nesting</title>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; touch-action:none; }
+* { margin:0; padding:0; box-sizing:border-box; touch-action: auto; }
 body { background:#1a1a2e; color:#fff; font-family:sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
 
 #header { background:#16213e; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #0f3460; flex-shrink:0; }
@@ -51,7 +80,12 @@ select, input[type=number] { background:#0f3460; color:#fff; border:1px solid #0
 .piece-row input { flex:1; min-width:60px; }
 
 .tip { font-size:11px; color:#aaa; margin-top:4px; }
-</style>
+/* FIX: restore touch events for interactive elements */
+button, .btn, .tool-btn, .mirror-btn, .color-dot,
+select, input, textarea, a, label, [onclick] {
+  touch-action: manipulation !important;
+  cursor: pointer;
+}</style>
 </head>
 <body>
 

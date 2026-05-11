@@ -69,9 +69,16 @@ public class MainActivity extends AppCompatActivity {
         settings.setAllowContentAccess(true);
 
         webView.setWebViewClient(new WebViewClient());
+        webView.setFocusable(true);
+        webView.setFocusableInTouchMode(true);
+        webView.requestFocus();
+        webView.setOnTouchListener((v, event) -> {
+            if (!v.hasFocus()) v.requestFocus();
+            return false;
+        });
         webView.loadUrl("file:///android_asset/" + fileName);
         webView.setVisibility(View.GONE);
-        
+
         webViewContainer.addView(webView);
         webViews.put(id, webView);
     }
