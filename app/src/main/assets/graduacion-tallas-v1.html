@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Graduación Automática de Tallas</title>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  canvas { touch-action: none; }
+  button, .btn, .tool-btn, .mirror-btn, select, input, a {
+    touch-action: manipulation;
+  }
 body { background:#1a1a2e; color:#fff; font-family:sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
 
 #header { background:#16213e; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #0f3460; flex-shrink:0; flex-wrap:wrap; gap:6px; }

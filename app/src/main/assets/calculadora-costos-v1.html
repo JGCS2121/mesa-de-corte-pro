@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Calculadora de Costos - Mesa de Corte</title>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  canvas { touch-action: none; }
+  button, .btn, .tool-btn, .mirror-btn, select, input, a {
+    touch-action: manipulation;
+  }
 body { background:#1a1a2e; color:#fff; font-family:sans-serif; min-height:100vh; }
 
 #header { background:#16213e; padding:10px 14px; border-bottom:2px solid #0f3460; display:flex; align-items:center; gap:10px; }
