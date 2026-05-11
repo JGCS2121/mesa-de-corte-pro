@@ -344,14 +344,20 @@ function redrawBase() {
   ctxBase.save();
   ctxBase.translate(offX, offY);
   ctxBase.scale(scale, scale);
+  
   const cmPx = pxPerCm;
-  ctxBase.strokeStyle = '#ffffff10';
-  ctxBase.lineWidth = 0.5;
-  for (let x = 0; x < W/scale + 200; x += cmPx) { ctxBase.beginPath(); ctxBase.moveTo(x,-200); ctxBase.lineTo(x,H/scale+200); ctxBase.stroke(); }
-  for (let y = 0; y < H/scale + 200; y += cmPx) { ctxBase.beginPath(); ctxBase.moveTo(-200,y); ctxBase.lineTo(W/scale+200,y); ctxBase.stroke(); }
-  ctxBase.strokeStyle = '#ffffff22'; ctxBase.lineWidth = 1;
-  for (let x = 0; x < W/scale + 200; x += cmPx*5) { ctxBase.beginPath(); ctxBase.moveTo(x,-200); ctxBase.lineTo(x,H/scale+200); ctxBase.stroke(); }
-  ctxBase.strokeStyle = '#ff6d0066'; ctxBase.lineWidth = 2; ctxBase.strokeRect(0, 0, telaCm * cmPx, H/scale);
+  if (cmPx > 0) {
+    ctxBase.strokeStyle = '#ffffff10';
+    ctxBase.lineWidth = 0.5;
+    for (let x = 0; x < W/scale + 200; x += cmPx) { ctxBase.beginPath(); ctxBase.moveTo(x,-200); ctxBase.lineTo(x,H/scale+200); ctxBase.stroke(); }
+    for (let y = 0; y < H/scale + 200; y += cmPx) { ctxBase.beginPath(); ctxBase.moveTo(-200,y); ctxBase.lineTo(W/scale+200,y); ctxBase.stroke(); }
+    
+    ctxBase.strokeStyle = '#ffffff22'; ctxBase.lineWidth = 1;
+    for (let x = 0; x < W/scale + 200; x += cmPx*5) { ctxBase.beginPath(); ctxBase.moveTo(x,-200); ctxBase.lineTo(x,H/scale+200); ctxBase.stroke(); }
+    
+    ctxBase.strokeStyle = '#ff6d0066'; ctxBase.lineWidth = 2; 
+    ctxBase.strokeRect(0, 0, telaCm * cmPx, H/scale);
+  }
   ctxBase.restore();
   if (basicSnap && basicVisible) ctxBase.putImageData(basicSnap, 0, 0);
 }
@@ -475,14 +481,81 @@ function renderProj() {
 }
 function exitProjection() { document.getElementById('proj-overlay').classList.add('hidden'); }
 
-// ─── INIT ────────────────────────────────────────────────────────────────────
-window.addEventListener('resize', resize);
-(function init() {
-  resize();
-  const savedPx = localStorage.getItem('calib_pxPerCm');
-  if (savedPx) pxPerCm = parseFloat(savedPx);
+// ─── IMPORT IMAGE ────────────────────────────────────────────────────────────
+let importedImg = null;
+function importImage(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        importedImg = img;
+        const prev = document.getElementById('import-img-preview');
+        prev.src = e.target.result;
+        prev.style.display = 'block';
+        document.getElementById('import-info').style.display = 'block';
+        document.getElementById('modal-import').classList.remove('hidden');
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function placeImportedImage() {
+  if (!importedImg) return;
+  const refPx = parseFloat(document.getElementById('import-ref-px').value);
+  const refCm = parseFloat(document.getElementById('import-ref-cm').value);
   
-  // FIX para WebView: Forzar touch-action none en canvases mediante script
+  saveHistory();
+  ctxDraw.save();
+  ctxDraw.translate(offX, offY);
+  ctxDraw.scale(scale, scale);
+  
+  let drawW = importedImg.width;
+  let drawH = importedImg.height;
+  
+  // Si hay calibración por referencia de imagen
+  if (refPx && refCm) {
+    const imgPxPerCm = refPx / refCm;
+    const finalScale = pxPerCm / imgPxPerCm;
+    drawW *= finalScale;
+    drawH *= finalScale;
+  } else {
+    // Escala por defecto si no hay medidas
+    const screenScale = (W * 0.8) / drawW;
+    drawW *= screenScale;
+    drawH *= screenScale;
+  }
+  
+  ctxDraw.globalAlpha = 0.7; // Un poco transparente para trazar encima
+  ctxDraw.drawImage(importedImg, 20, 20, drawW, drawH);
+  ctxDraw.restore();
+  
+  closeModal('modal-import');
+  alert('Imagen colocada. Ahora puedes trazar encima con el Lápiz.');
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+window.addEventListener('error', function(e) {
+  alert('Error: ' + e.message + ' at ' + e.filename + ':' + e.lineno);
+});
+
+window.addEventListener('resize', resize);
+const ro = new ResizeObserver(() => { if (document.body.clientWidth > 0) resize(); });
+ro.observe(document.body);
+
+(function init() {
+  // Esperar a que el layout esté listo
+  requestAnimationFrame(() => {
+    resize();
+    const savedPx = localStorage.getItem('calib_pxPerCm');
+    if (savedPx) {
+      pxPerCm = parseFloat(savedPx);
+      redrawBase();
+    }
+  });
+  
   ['canvas-base','canvas-draw','canvas-ui'].forEach(id => {
     const c = document.getElementById(id);
     if (c) {

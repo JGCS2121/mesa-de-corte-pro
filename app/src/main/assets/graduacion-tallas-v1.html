@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -492,6 +492,9 @@ window.GRAD_DATA=${json};
 
 function closeModal(id){document.getElementById(id).classList.add('hidden');}
 window.addEventListener('resize',resize);
+const ro = new ResizeObserver(() => { if (document.body.clientWidth > 0) resize(); });
+ro.observe(document.body);
+
 resize();
 
 // Load blusa by default

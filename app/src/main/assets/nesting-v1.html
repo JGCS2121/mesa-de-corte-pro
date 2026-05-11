@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -511,6 +511,9 @@ function exitProj() {
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
 window.addEventListener('resize', resize);
+const ro = new ResizeObserver(() => { if (document.body.clientWidth > 0) resize(); });
+ro.observe(document.body);
+
 resize();
 </script>
 </body>
