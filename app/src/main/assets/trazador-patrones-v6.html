@@ -1,15 +1,21 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Trazador de Patrones v4</title>
+<title>Trazador de Patrones v6 - PRO</title>
 <style>
+  /* FIX: No usar touch-action: none globalmente */
   * { margin:0; padding:0; box-sizing:border-box; }
-  canvas { touch-action: none; }
+  
+  /* FIX: Solo los canvas deben bloquear gestos del navegador */
+  canvas { touch-action: none; -webkit-user-select: none; user-select: none; }
+
+  /* FIX: Botones y selectores deben ser manipulables */
   button, .btn, .tool-btn, .mirror-btn, select, input, a {
     touch-action: manipulation;
   }
+
   body { background:#1a1a2e; color:#fff; font-family:sans-serif; overflow:hidden; height:100vh; display:flex; flex-direction:column; }
 
   /* HEADER */
@@ -31,8 +37,8 @@
   .badge-transform { background:#00d4ff; color:#000; }
 
   /* CANVAS */
-  #canvas-wrap { flex:1; position:relative; overflow:hidden; }
-  canvas { position:absolute; top:0; left:0; }
+  #canvas-wrap { flex:1; position:relative; overflow:hidden; background: #000; }
+  canvas { position:absolute; top:0; left:0; width: 100%; height: 100%; }
   #canvas-base { z-index:1; }
   #canvas-draw { z-index:2; }
   #canvas-ui   { z-index:3; }
@@ -62,6 +68,7 @@
   /* LIBRARY LIST */
   #lib-list { max-height:200px; overflow-y:auto; margin-bottom:10px; }
   .lib-item { background:#0f3460; border-radius:8px; padding:8px 10px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+  .lib-item.selected { border: 2px solid #00d4ff !important; }
   .lib-item:hover { background:#1a4a80; }
   .lib-item-name { font-size:13px; }
   .lib-item-meta { font-size:10px; color:#aaa; }
@@ -76,7 +83,6 @@
   #mp-correct-row button { padding:6px 12px; background:#00c853; border:none; border-radius:6px; color:#000; font-weight:bold; cursor:pointer; font-size:12px; }
   #mp-close { width:100%; padding:6px; background:#444; border:none; border-radius:6px; color:#fff; cursor:pointer; font-size:12px; }
 
-
   /* MIRROR */
   #mirror-bar { background:#0d1b2a; border-bottom:1px solid #0f3460; padding:4px 10px; display:flex; gap:8px; align-items:center; flex-shrink:0; }
   .mirror-btn { padding:4px 12px; border:none; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer; }
@@ -85,7 +91,6 @@
   #mirror-line-x { position:absolute; z-index:5; pointer-events:none; top:0; left:50%; width:2px; height:100%; background:repeating-linear-gradient(to bottom,#ff6d00 0,#ff6d00 8px,transparent 8px,transparent 16px); display:none; }
   #mirror-line-y { position:absolute; z-index:5; pointer-events:none; left:0; top:50%; width:100%; height:2px; background:repeating-linear-gradient(to right,#ff6d00 0,#ff6d00 8px,transparent 8px,transparent 16px); display:none; }
 
-
   /* PROJECTION MODE */
   #proj-overlay { position:fixed; inset:0; background:#000; z-index:200; display:flex; flex-direction:column; align-items:center; justify-content:center; }
   #proj-canvas  { background:#000; display:block; }
@@ -93,9 +98,9 @@
   #proj-scale-label { color:#fff; font-size:13px; min-width:80px; text-align:center; }
 
   /* CALIBRATION */
-  #calib-modal .modal { max-width:400px; }
-  #calib-box { width:100%; height:120px; border:3px solid #00d4ff; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#00d4ff; font-size:13px; margin-bottom:12px; position:relative; background:#0f3460; }
-  #calib-box span { font-size:36px; font-weight:bold; }
+  #calib-modal .modal { max-width:400px; width: 95%; }
+  #calib-box { width:150px; height:150px; border:3px solid #00d4ff; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#00d4ff; font-size:13px; margin: 12px auto; position:relative; background:#0f3460; box-shadow: 0 0 15px #00d4ff55; }
+  #calib-box span { font-size:24px; font-weight:bold; }
   .calib-step { background:#0f3460; border-radius:8px; padding:10px; margin-bottom:10px; font-size:12px; line-height:1.6; }
   .calib-step b { color:#00d4ff; }
 
@@ -104,12 +109,7 @@
 
   #tela-cm-badge { font-size:11px; color:#00d4ff; }
   .hidden { display:none !important; }
-/* FIX: restore touch events for interactive elements */
-button, .btn, .tool-btn, .mirror-btn, .color-dot,
-select, input, textarea, a, label, [onclick] {
-  touch-action: manipulation !important;
-  cursor: pointer;
-}</style>
+</style>
 </head>
 <body>
 
@@ -117,7 +117,7 @@ select, input, textarea, a, label, [onclick] {
 <div id="header">
   <div style="display:flex;align-items:center;gap:8px;">
     <span style="font-size:18px;">✂️</span>
-    <h1>Trazador de Patrones v4</h1>
+    <h1>Mesa de Corte Pro v6</h1>
   </div>
   <div id="header-right">
     <button class="btn btn-orange" onclick="showCalib()" style="font-size:11px;">📐 Calibrar</button>
@@ -150,7 +150,6 @@ select, input, textarea, a, label, [onclick] {
   <button id="btn-toggle-basic" class="btn btn-gray" style="font-size:10px;padding:3px 8px;" onclick="toggleBasicVisibility()">👁 Básico</button>
 </div>
 
-
 <!-- MIRROR BAR -->
 <div id="mirror-bar">
   <span style="font-size:11px;color:#aaa;">Espejo:</span>
@@ -162,10 +161,8 @@ select, input, textarea, a, label, [onclick] {
 
 <!-- CANVAS -->
 <div id="canvas-wrap">
-  
   <div id="mirror-line-x"></div>
   <div id="mirror-line-y"></div>
-
   <canvas id="canvas-base"></canvas>
   <canvas id="canvas-draw"></canvas>
   <canvas id="canvas-ui"></canvas>
@@ -174,20 +171,12 @@ select, input, textarea, a, label, [onclick] {
 <!-- BOTTOM BAR -->
 <div id="bottom-bar">
   <span class="bb-label">Color</span>
-  <span class="bb-label">Color</span>
-  <div style="display:flex;gap:5px;align-items:center;">
-    <div class="color-dot" style="background:#00FF00;border-color:#00FF00;" onclick="setColor('#00FF00')" title="Verde neón (tela oscura)"></div>
-    <div class="color-dot" style="background:#FF6600;border-color:#FF6600;" onclick="setColor('#FF6600')" title="Naranja (tela oscura)"></div>
-    <div class="color-dot" style="background:#ffffff;border-color:#aaa;" onclick="setColor('#ffffff')" title="Blanco"></div>
-    <div class="color-dot" style="background:#00d4ff;border-color:#00d4ff;" onclick="setColor('#00d4ff')" title="Cian"></div>
-    <div class="color-dot" style="background:#e53935;border-color:#e53935;" onclick="setColor('#e53935')" title="Rojo"></div>
-    <div class="color-dot" id="color-dot" style="background:#00d4ff" onclick="document.getElementById('color-pick').click()" title="Personalizado">+</div>
-  </div>
+  <div class="color-dot" id="color-dot" style="background:#00d4ff" onclick="document.getElementById('color-pick').click()"></div>
   <input type="color" id="color-pick" value="#00d4ff" style="display:none" onchange="setColor(this.value)">
   <span class="bb-label">Grosor</span>
   <select id="sel-grosor" onchange="setGrosor(this.value)">
-    <option value="2">2px</option><option value="4">4px</option>
-    <option value="7" selected>7px</option><option value="12">12px</option><option value="18">18px</option>
+    <option value="2">2</option><option value="4">4</option>
+    <option value="7">7</option><option value="12">12</option>
   </select>
   <span class="bb-label">Tela</span>
   <select id="sel-tela" onchange="setTela(this.value)">
@@ -198,7 +187,7 @@ select, input, textarea, a, label, [onclick] {
   <span class="bb-label" style="margin-left:auto;" id="zoom-label">Zoom: 100%</span>
 </div>
 
-<!-- MEASURE POPUP -->
+<!-- MODALS -->
 <div id="measure-popup" class="hidden">
   <h3>📏 Longitud de línea</h3>
   <div id="mp-result">0.0 cm</div>
@@ -209,7 +198,6 @@ select, input, textarea, a, label, [onclick] {
   <button id="mp-close" onclick="closeMeasurePopup()">Cerrar</button>
 </div>
 
-<!-- SAVE MODAL -->
 <div id="modal-save" class="modal-bg hidden">
   <div class="modal">
     <h2>💾 Guardar Patrón</h2>
@@ -226,7 +214,6 @@ select, input, textarea, a, label, [onclick] {
   </div>
 </div>
 
-<!-- LIBRARY MODAL -->
 <div id="modal-library" class="modal-bg hidden">
   <div class="modal">
     <h2>📂 Biblioteca de Patrones</h2>
@@ -238,7 +225,6 @@ select, input, textarea, a, label, [onclick] {
   </div>
 </div>
 
-<!-- CONFIRM CLEAR -->
 <div id="modal-clear" class="modal-bg hidden">
   <div class="modal">
     <h2>🧹 Limpiar capa</h2>
@@ -251,8 +237,68 @@ select, input, textarea, a, label, [onclick] {
   </div>
 </div>
 
+<div id="calib-modal" class="modal-bg hidden">
+  <div class="modal">
+    <h2>📐 Calibrar Proyector</h2>
+    <div class="calib-step">
+      <b>Paso 1:</b> El cuadro de abajo representa <b>20×20 cm</b>. Mídelo en la tela con una regla física.
+    </div>
+    
+    <div style="display:flex; justify-content:center; align-items:center; gap:10px;">
+      <button onclick="adjustCalibBox(-5)" style="background:#444; color:#fff; border:none; border-radius:50%; width:30px; height:30px;">-</button>
+      <div id="calib-box">
+        <span>20×20</span>
+      </div>
+      <button onclick="adjustCalibBox(5)" style="background:#444; color:#fff; border:none; border-radius:50%; width:30px; height:30px;">+</button>
+    </div>
+
+    <div class="calib-step">
+      <b>Paso 2:</b> Ingresa cuánto mide el cuadro azul en tu tela:
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
+      <input type="number" id="calib-measured" placeholder="ej: 22.4" step="0.1" style="flex:1">
+      <span style="color:#aaa;font-size:12px;">cm reales</span>
+    </div>
+    <div id="calib-result" style="font-size:12px;color:#00c853;margin-bottom:10px;"></div>
+    <div class="modal-btns">
+      <button class="btn btn-gray" onclick="closeModal('calib-modal')">Cancelar</button>
+      <button class="btn btn-green" onclick="applyCalib()">✅ Aplicar</button>
+    </div>
+  </div>
+</div>
+
+<div id="proj-overlay" class="hidden">
+  <canvas id="proj-canvas"></canvas>
+  <div id="proj-controls">
+    <button onclick="projScale(-0.05)">➖</button>
+    <div id="proj-scale-label">100%</div>
+    <button onclick="projScale(+0.05)">➕</button>
+    <button onclick="projMove(-10,0)">◀</button>
+    <button onclick="projMove(0,-10)">▲</button>
+    <button onclick="projMove(0,+10)">▼</button>
+    <button onclick="projMove(+10,0)">▶</button>
+    <button onclick="exitProjection()" style="background:#e53935;">✖ Salir</button>
+  </div>
+</div>
+
+<div id="modal-import" class="modal-bg hidden">
+  <div class="modal">
+    <h2>📥 Importar Imagen</h2>
+    <img id="import-img-preview" src="">
+    <div class="calib-step" id="import-info" style="display:none;">
+      <b>Escala:</b> ¿Cuánto mide una referencia en cm?<br>
+      Px: <input type="number" id="import-ref-px" placeholder="px en imagen" style="width:70px">
+      Cm: <input type="number" id="import-ref-cm" placeholder="cm real" step="0.5" style="width:70px">
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-gray" onclick="closeModal('modal-import')">Cancelar</button>
+      <button class="btn btn-cyan" onclick="placeImportedImage()">📌 Colocar</button>
+    </div>
+  </div>
+</div>
+
 <script>
-// ─── STATE ───────────────────────────────────────────────────────────────────
+// ─── CONFIG & STATE ──────────────────────────────────────────────────────────
 const canvasBase = document.getElementById('canvas-base');
 const canvasDraw = document.getElementById('canvas-draw');
 const canvasUI   = document.getElementById('canvas-ui');
@@ -269,19 +315,16 @@ let pxPerCm = 1;
 
 let drawing = false;
 let startX, startY, lastX, lastY;
-let points = []; // for pencil
 let history = [];
-let basicSnap = null; // ImageData of basic layer
+let basicSnap = null;
 let basicVisible = true;
 
-// zoom/pan
 let scale = 1, offX = 0, offY = 0;
 let pinching = false, pinchDist0 = 0, scale0 = 1, pinchMidX = 0, pinchMidY = 0, offX0 = 0, offY0 = 0;
-let panning = false, panX0 = 0, panY0 = 0, offXp = 0, offYp = 0;
-
-// line correction
 let lastLineP1 = null, lastLineP2 = null;
+let mirrorMode = null;
 
+// ─── CORE ────────────────────────────────────────────────────────────────────
 function resize() {
   const wrap = document.getElementById('canvas-wrap');
   W = wrap.clientWidth; H = wrap.clientHeight;
@@ -296,775 +339,189 @@ function resize() {
   redrawDraw();
 }
 
-// ─── TELA ────────────────────────────────────────────────────────────────────
-function setTela(v) {
-  telaCm = parseInt(v);
-  pxPerCm = W / telaCm;
-  document.getElementById('tela-cm-badge').textContent = '📐 ' + telaCm + ' cm';
-  redrawBase();
-}
-
-// ─── BASE LAYER (grid + basic) ───────────────────────────────────────────────
 function redrawBase() {
   ctxBase.clearRect(0, 0, W, H);
   ctxBase.save();
   ctxBase.translate(offX, offY);
   ctxBase.scale(scale, scale);
-
-  // grid
   const cmPx = pxPerCm;
   ctxBase.strokeStyle = '#ffffff10';
   ctxBase.lineWidth = 0.5;
-  for (let x = 0; x < W / scale + 200; x += cmPx) {
-    ctxBase.beginPath(); ctxBase.moveTo(x, -200); ctxBase.lineTo(x, H / scale + 200); ctxBase.stroke();
-  }
-  for (let y = 0; y < H / scale + 200; y += cmPx) {
-    ctxBase.beginPath(); ctxBase.moveTo(-200, y); ctxBase.lineTo(W / scale + 200, y); ctxBase.stroke();
-  }
-  // 5cm marks
-  ctxBase.strokeStyle = '#ffffff22';
-  ctxBase.lineWidth = 1;
-  for (let x = 0; x < W / scale + 200; x += cmPx * 5) {
-    ctxBase.beginPath(); ctxBase.moveTo(x, -200); ctxBase.lineTo(x, H / scale + 200); ctxBase.stroke();
-  }
-  // tela border
-  ctxBase.strokeStyle = '#ff6d0066';
-  ctxBase.lineWidth = 2;
-  ctxBase.strokeRect(0, 0, telaCm * cmPx, H / scale);
-
+  for (let x = 0; x < W/scale + 200; x += cmPx) { ctxBase.beginPath(); ctxBase.moveTo(x,-200); ctxBase.lineTo(x,H/scale+200); ctxBase.stroke(); }
+  for (let y = 0; y < H/scale + 200; y += cmPx) { ctxBase.beginPath(); ctxBase.moveTo(-200,y); ctxBase.lineTo(W/scale+200,y); ctxBase.stroke(); }
+  ctxBase.strokeStyle = '#ffffff22'; ctxBase.lineWidth = 1;
+  for (let x = 0; x < W/scale + 200; x += cmPx*5) { ctxBase.beginPath(); ctxBase.moveTo(x,-200); ctxBase.lineTo(x,H/scale+200); ctxBase.stroke(); }
+  ctxBase.strokeStyle = '#ff6d0066'; ctxBase.lineWidth = 2; ctxBase.strokeRect(0, 0, telaCm * cmPx, H/scale);
   ctxBase.restore();
-
-  // basic pattern (drawn in screen space already stored)
-  if (basicSnap && basicVisible) {
-    ctxBase.putImageData(basicSnap, 0, 0);
-  }
+  if (basicSnap && basicVisible) ctxBase.putImageData(basicSnap, 0, 0);
 }
 
-// ─── DRAW LAYER ──────────────────────────────────────────────────────────────
-let drawSnap = null;
-function saveHistory() {
-  history.push(ctxDraw.getImageData(0, 0, canvasDraw.width, canvasDraw.height));
-  if (history.length > 30) history.shift();
-}
-function redrawDraw() {
-  if (drawSnap) ctxDraw.putImageData(drawSnap, 0, 0);
-}
+function redrawDraw() { /* handled by putImageData in history */ }
+function saveHistory() { history.push(ctxDraw.getImageData(0, 0, canvasDraw.width, canvasDraw.height)); if (history.length > 30) history.shift(); }
+function undo() { if (history.length > 0) ctxDraw.putImageData(history.pop(), 0, 0); }
 
 // ─── TOOLS ───────────────────────────────────────────────────────────────────
-function setTool(t) {
-  tool = t;
-  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-  const el = document.getElementById('tb-' + t);
-  if (el) el.classList.add('active');
-}
+function setTool(t) { tool = t; document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active')); document.getElementById('tb-'+t).classList.add('active'); }
 function setColor(v) { color = v; document.getElementById('color-dot').style.background = v; }
 function setGrosor(v) { grosor = parseInt(v); }
+function setTela(v) { telaCm = parseInt(v); pxPerCm = W / telaCm; document.getElementById('tela-cm-badge').textContent = '📐 ' + telaCm + ' cm'; redrawBase(); }
 
-function undo() {
-  if (history.length === 0) return;
-  ctxDraw.putImageData(history.pop(), 0, 0);
-}
-
-function clearDraw() { document.getElementById('modal-clear').classList.remove('hidden'); }
-function doClearDraw() { ctxDraw.clearRect(0, 0, W * dpr, H * dpr); history = []; }
-function doClearAll() { doClearDraw(); basicSnap = null; basicVisible = true; document.getElementById('basic-status').textContent = 'Sin básico cargado'; redrawBase(); }
-
-// ─── COORDINATE HELPERS ──────────────────────────────────────────────────────
-function toCanvas(ex, ey) {
-  const rect = canvasUI.getBoundingClientRect();
-  return { x: (ex - rect.left - offX) / scale, y: (ey - rect.top - offY) / scale };
-}
-function toScreen(cx, cy) { return { x: cx * scale + offX, y: cy * scale + offY }; }
+// ─── EVENTS ──────────────────────────────────────────────────────────────────
+function toCanvas(ex, ey) { const rect = canvasUI.getBoundingClientRect(); return { x: (ex - rect.left - offX) / scale, y: (ey - rect.top - offY) / scale }; }
 function distPx(x1,y1,x2,y2) { return Math.sqrt((x2-x1)**2+(y2-y1)**2); }
 function cmFromPx(px) { return px / pxPerCm; }
 
-// ─── POINTER EVENTS ──────────────────────────────────────────────────────────
-canvasUI.addEventListener('pointerdown', onDown);
-canvasUI.addEventListener('pointermove', onMove);
-canvasUI.addEventListener('pointerup',   onUp);
-canvasUI.addEventListener('pointercancel', onUp);
-
 let pointers = {};
-function onDown(e) {
-  e.preventDefault();
-  pointers[e.pointerId] = e;
+canvasUI.addEventListener('pointerdown', e => {
+  e.preventDefault(); pointers[e.pointerId] = e;
   const keys = Object.keys(pointers);
+  if (keys.length === 2) { pinching = true; drawing = false; const [a,b] = keys.map(k=>pointers[k]); pinchDist0 = distPx(a.clientX,a.clientY,b.clientX,b.clientY); scale0 = scale; pinchMidX = (a.clientX+b.clientX)/2; pinchMidY = (a.clientY+b.clientY)/2; offX0 = offX; offY0 = offY; return; }
+  if (keys.length === 1) { const pt = toCanvas(e.clientX, e.clientY); startX = pt.x; startY = pt.y; lastX = pt.x; lastY = pt.y; drawing = true; if (tool==='lapiz'||tool==='borrar') saveHistory(); }
+});
 
-  if (keys.length === 2) {
-    // two fingers → pinch/pan
-    drawing = false;
-    pinching = true;
-    const [a, b] = keys.map(k => pointers[k]);
-    pinchDist0 = distPx(a.clientX, a.clientY, b.clientX, b.clientY);
-    scale0 = scale;
-    pinchMidX = (a.clientX + b.clientX) / 2;
-    pinchMidY = (a.clientY + b.clientY) / 2;
-    offX0 = offX; offY0 = offY;
-    return;
-  }
-
-  if (keys.length === 1) {
-    const pt = toCanvas(e.clientX, e.clientY);
-    startX = pt.x; startY = pt.y;
-    lastX = pt.x; lastY = pt.y;
-    drawing = true;
-    if (tool === 'lapiz' || tool === 'borrar') {
-      saveHistory();
-      points = [pt];
-    }
-  }
-}
-
-function onMove(e) {
-  e.preventDefault();
-  pointers[e.pointerId] = e;
+canvasUI.addEventListener('pointermove', e => {
+  e.preventDefault(); pointers[e.pointerId] = e;
   const keys = Object.keys(pointers);
-
   if (pinching && keys.length === 2) {
-    const [a, b] = keys.map(k => pointers[k]);
-    const dist = distPx(a.clientX, a.clientY, b.clientX, b.clientY);
-    const newScale = Math.max(0.5, Math.min(6, scale0 * dist / pinchDist0));
-    const midX = (a.clientX + b.clientX) / 2;
-    const midY = (a.clientY + b.clientY) / 2;
-    const rect = canvasUI.getBoundingClientRect();
-    const mx = midX - rect.left, my = midY - rect.top;
-    offX = mx - (mx - offX0) * newScale / scale0 + (midX - pinchMidX);
-    offY = my - (my - offY0) * newScale / scale0 + (midY - pinchMidY);
-    scale = newScale;
-    document.getElementById('zoom-label').textContent = 'Zoom: ' + Math.round(scale * 100) + '%';
-    redrawBase();
-    redrawDraw();
-    ctxUI.clearRect(0, 0, W, H);
-    return;
+    const [a,b] = keys.map(k=>pointers[k]); const d = distPx(a.clientX,a.clientY,b.clientX,b.clientY);
+    const ns = Math.max(0.5, Math.min(8, scale0 * d / pinchDist0));
+    const mx = (a.clientX+b.clientX)/2 - canvasUI.getBoundingClientRect().left, my = (a.clientY+b.clientY)/2 - canvasUI.getBoundingClientRect().top;
+    offX = mx - (mx - offX0) * ns / scale0 + ((a.clientX+b.clientX)/2 - pinchMidX);
+    offY = my - (my - offY0) * ns / scale0 + ((a.clientY+b.clientY)/2 - pinchMidY);
+    scale = ns; document.getElementById('zoom-label').textContent = 'Zoom: ' + Math.round(scale*100) + '%'; redrawBase(); redrawDraw(); return;
   }
-
   if (!drawing) return;
   const pt = toCanvas(e.clientX, e.clientY);
-
-  ctxDraw.save();
-  ctxDraw.translate(offX, offY);
-  ctxDraw.scale(scale, scale);
-
+  ctxDraw.save(); ctxDraw.translate(offX, offY); ctxDraw.scale(scale, scale);
   if (tool === 'lapiz') {
-    ctxDraw.strokeStyle = color;
-    ctxDraw.lineWidth = grosor / scale;
-    ctxDraw.lineCap = 'round';
-    ctxDraw.beginPath();
-    ctxDraw.moveTo(lastX, lastY);
-    ctxDraw.lineTo(pt.x, pt.y);
-    ctxDraw.stroke();
-    // real-time mirror
-    if (mirrorMode === 'v' || mirrorMode === 'both') {
-      const mxL = (W / scale - lastX) * 1, mxP = (W / scale - pt.x);
-      ctxDraw.beginPath(); ctxDraw.moveTo(mxL, lastY); ctxDraw.lineTo(mxP, pt.y); ctxDraw.stroke();
-    }
-    if (mirrorMode === 'h' || mirrorMode === 'both') {
-      const myL = (H / scale - lastY), myP = (H / scale - pt.y);
-      ctxDraw.beginPath(); ctxDraw.moveTo(lastX, myL); ctxDraw.lineTo(pt.x, myP); ctxDraw.stroke();
-    }
+    ctxDraw.strokeStyle = color; ctxDraw.lineWidth = grosor / scale; ctxDraw.lineCap = 'round';
+    ctxDraw.beginPath(); ctxDraw.moveTo(lastX, lastY); ctxDraw.lineTo(pt.x, pt.y); ctxDraw.stroke();
+    if (mirrorMode === 'v' || mirrorMode === 'both') { ctxDraw.beginPath(); ctxDraw.moveTo(W/scale-lastX, lastY); ctxDraw.lineTo(W/scale-pt.x, pt.y); ctxDraw.stroke(); }
     lastX = pt.x; lastY = pt.y;
   } else if (tool === 'borrar') {
-    ctxDraw.globalCompositeOperation = 'destination-out';
-    ctxDraw.strokeStyle = 'rgba(0,0,0,1)';
-    ctxDraw.lineWidth = (grosor * 5) / scale;
-    ctxDraw.lineCap = 'round';
-    ctxDraw.beginPath();
-    ctxDraw.moveTo(lastX, lastY);
-    ctxDraw.lineTo(pt.x, pt.y);
-    ctxDraw.stroke();
-    ctxDraw.globalCompositeOperation = 'source-over';
-    lastX = pt.x; lastY = pt.y;
+    ctxDraw.globalCompositeOperation = 'destination-out'; ctxDraw.lineWidth = 20/scale; ctxDraw.lineCap = 'round';
+    ctxDraw.beginPath(); ctxDraw.moveTo(lastX, lastY); ctxDraw.lineTo(pt.x, pt.y); ctxDraw.stroke();
+    ctxDraw.globalCompositeOperation = 'source-over'; lastX = pt.x; lastY = pt.y;
   }
   ctxDraw.restore();
-
-  // preview for line/rect/curva
-  if (tool === 'linea' || tool === 'rect' || tool === 'curva') {
-    ctxUI.clearRect(0, 0, W, H);
-    ctxUI.save();
-    ctxUI.translate(offX, offY);
-    ctxUI.scale(scale, scale);
-    ctxUI.strokeStyle = color;
-    ctxUI.lineWidth = grosor / scale;
-    ctxUI.setLineDash([6 / scale, 3 / scale]);
+  if (tool==='linea'||tool==='rect'||tool==='curva') {
+    ctxUI.clearRect(0,0,W,H); ctxUI.save(); ctxUI.translate(offX,offY); ctxUI.scale(scale,scale);
+    ctxUI.strokeStyle = color; ctxUI.lineWidth = grosor/scale; ctxUI.setLineDash([5/scale, 5/scale]);
     ctxUI.beginPath();
-    if (tool === 'linea') {
-      ctxUI.moveTo(startX, startY);
-      ctxUI.lineTo(pt.x, pt.y);
-    } else if (tool === 'rect') {
-      ctxUI.strokeRect(startX, startY, pt.x - startX, pt.y - startY);
-    } else if (tool === 'curva') {
-      const mx = (startX + pt.x) / 2, my = (startY + pt.y) / 2 - 40 / scale;
-      ctxUI.moveTo(startX, startY);
-      ctxUI.quadraticCurveTo(mx, my, pt.x, pt.y);
-    }
-    ctxUI.stroke();
-    ctxUI.setLineDash([]);
-    // distance label
-    const dPx = distPx(startX, startY, pt.x, pt.y) * scale;
-    const dCm = cmFromPx(distPx(startX, startY, pt.x, pt.y));
-    ctxUI.fillStyle = '#ffeb3b';
-    ctxUI.font = `bold ${14 / scale}px sans-serif`;
-    ctxUI.fillText(dCm.toFixed(1) + ' cm', (startX + pt.x) / 2 + 5 / scale, (startY + pt.y) / 2 - 5 / scale);
-    ctxUI.restore();
+    if (tool==='linea') { ctxUI.moveTo(startX,startY); ctxUI.lineTo(pt.x,pt.y); }
+    else if (tool==='rect') ctxUI.strokeRect(startX,startY,pt.x-startX,pt.y-startY);
+    else if (tool==='curva') { ctxUI.moveTo(startX,startY); ctxUI.quadraticCurveTo((startX+pt.x)/2, (startY+pt.y)/2-50/scale, pt.x, pt.y); }
+    ctxUI.stroke(); ctxUI.restore();
   }
-}
+});
 
-function onUp(e) {
-  e.preventDefault();
-  delete pointers[e.pointerId];
-  if (Object.keys(pointers).length < 2) pinching = false;
-  if (!drawing) return;
-  drawing = false;
-
-  const pt = toCanvas(e.clientX, e.clientY);
-  ctxUI.clearRect(0, 0, W, H);
-
-  if (tool === 'linea' || tool === 'rect' || tool === 'curva') {
-    saveHistory();
-    ctxDraw.save();
-    ctxDraw.translate(offX, offY);
-    ctxDraw.scale(scale, scale);
-    ctxDraw.strokeStyle = color;
-    ctxDraw.lineWidth = grosor / scale;
-    ctxDraw.lineCap = 'round';
-    ctxDraw.beginPath();
-    if (tool === 'linea') {
-      ctxDraw.moveTo(startX, startY);
-      ctxDraw.lineTo(pt.x, pt.y);
-      ctxDraw.stroke();
-      lastLineP1 = { x: startX, y: startY };
-      lastLineP2 = { x: pt.x, y: pt.y };
-      showMeasurePopup(e.clientX, e.clientY, startX, startY, pt.x, pt.y);
-    } else if (tool === 'rect') {
-      ctxDraw.strokeRect(startX, startY, pt.x - startX, pt.y - startY);
-    } else if (tool === 'curva') {
-      const mx = (startX + pt.x) / 2, my = (startY + pt.y) / 2 - 40 / scale;
-      ctxDraw.moveTo(startX, startY);
-      ctxDraw.quadraticCurveTo(mx, my, pt.x, pt.y);
-      ctxDraw.stroke();
-    }
+canvasUI.addEventListener('pointerup', e => {
+  delete pointers[e.pointerId]; pinching = false;
+  if (!drawing) return; drawing = false;
+  const pt = toCanvas(e.clientX, e.clientY); ctxUI.clearRect(0,0,W,H);
+  if (tool==='linea'||tool==='rect'||tool==='curva') {
+    saveHistory(); ctxDraw.save(); ctxDraw.translate(offX,offY); ctxDraw.scale(scale,scale);
+    ctxDraw.strokeStyle=color; ctxDraw.lineWidth=grosor/scale; ctxDraw.lineCap='round'; ctxDraw.beginPath();
+    if (tool==='linea') { ctxDraw.moveTo(startX,startY); ctxDraw.lineTo(pt.x,pt.y); ctxDraw.stroke(); lastLineP1={x:startX,y:startY}; lastLineP2={x:pt.x,y:pt.y}; showMeasurePopup(e.clientX,e.clientY,startX,startY,pt.x,pt.y); }
+    else if (tool==='rect') ctxDraw.strokeRect(startX,startY,pt.x-startX,pt.y-startY);
+    else if (tool==='curva') { ctxDraw.moveTo(startX,startY); ctxDraw.quadraticCurveTo((startX+pt.x)/2, (startY+pt.y)/2-50/scale, pt.x, pt.y); ctxDraw.stroke(); }
     ctxDraw.restore();
   }
+});
+
+// ─── HELPERS & MODALS ────────────────────────────────────────────────────────
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+function showCalib() { document.getElementById('calib-modal').classList.remove('hidden'); }
+function adjustCalibBox(d) { let b = document.getElementById('calib-box'); let w = parseInt(b.style.width)||150; b.style.width=(w+d)+'px'; b.style.height=(w+d)+'px'; }
+
+function applyCalib() {
+  const measured = parseFloat(document.getElementById('calib-measured').value);
+  if (!measured) return;
+  const boxW_px = parseInt(document.getElementById('calib-box').style.width) || 150;
+  // If box of boxW_px represents 20cm, then pxPerCm = boxW_px / measured
+  pxPerCm = boxW_px / measured;
+  localStorage.setItem('calib_pxPerCm', pxPerCm);
+  document.getElementById('calib-result').textContent = '✅ Calibrado: 1cm = ' + pxPerCm.toFixed(2) + 'px';
+  redrawBase(); setTimeout(()=>closeModal('calib-modal'), 1000);
 }
 
-// ─── MEASURE POPUP ───────────────────────────────────────────────────────────
-function showMeasurePopup(ex, ey, x1, y1, x2, y2) {
-  const dCm = cmFromPx(distPx(x1, y1, x2, y2));
-  const pop = document.getElementById('measure-popup');
+function showMeasurePopup(ex,ey,x1,y1,x2,y2) {
+  const dCm = cmFromPx(distPx(x1,y1,x2,y2));
+  const p = document.getElementById('measure-popup');
   document.getElementById('mp-result').textContent = dCm.toFixed(1) + ' cm';
-  document.getElementById('mp-target').value = '';
-  pop.classList.remove('hidden');
-  const rect = canvasUI.getBoundingClientRect();
-  let px = ex - rect.left, py = ey - rect.top;
-  if (px + 220 > W) px = W - 220;
-  if (py + 160 > H) py = py - 160;
-  pop.style.left = (px + rect.left) + 'px';
-  pop.style.top  = (py + rect.top)  + 'px';
+  p.classList.remove('hidden'); p.style.left = Math.min(ex,W-220)+'px'; p.style.top = Math.min(ey,H-180)+'px';
 }
-
-function closeMeasurePopup() {
-  document.getElementById('measure-popup').classList.add('hidden');
-  lastLineP1 = null; lastLineP2 = null;
-}
+function closeMeasurePopup() { document.getElementById('measure-popup').classList.add('hidden'); }
 
 function applyCorrection() {
   const target = parseFloat(document.getElementById('mp-target').value);
   if (!target || !lastLineP1) return;
-  const p1 = lastLineP1, p2 = lastLineP2;
-  const curPx = distPx(p1.x, p1.y, p2.x, p2.y);
-  if (curPx === 0) return;
-  const targetPx = target * pxPerCm;
-  const ratio = targetPx / curPx;
-  const newX2 = p1.x + (p2.x - p1.x) * ratio;
-  const newY2 = p1.y + (p2.y - p1.y) * ratio;
-
-  // undo last line and redraw corrected
-  if (history.length > 0) ctxDraw.putImageData(history[history.length - 1], 0, 0);
-  saveHistory();
-  ctxDraw.save();
-  ctxDraw.translate(offX, offY);
-  ctxDraw.scale(scale, scale);
-  ctxDraw.strokeStyle = color;
-  ctxDraw.lineWidth = grosor / scale;
-  ctxDraw.lineCap = 'round';
-  ctxDraw.beginPath();
-  ctxDraw.moveTo(p1.x, p1.y);
-  ctxDraw.lineTo(newX2, newY2);
-  ctxDraw.stroke();
-  // endpoint dot
-  ctxDraw.fillStyle = '#00c853';
-  ctxDraw.beginPath();
-  ctxDraw.arc(newX2, newY2, 4 / scale, 0, Math.PI * 2);
-  ctxDraw.fill();
-  ctxDraw.restore();
-  document.getElementById('mp-result').textContent = target.toFixed(1) + ' cm ✅';
-  lastLineP1 = { x: p1.x, y: p1.y };
-  lastLineP2 = { x: newX2, y: newY2 };
+  const p1=lastLineP1, p2=lastLineP2; const curPx = distPx(p1.x,p1.y,p2.x,p2.y);
+  const targetPx = target * pxPerCm; const ratio = targetPx / curPx;
+  const nx2 = p1.x + (p2.x-p1.x)*ratio, ny2 = p1.y + (p2.y-p1.y)*ratio;
+  undo(); saveHistory(); ctxDraw.save(); ctxDraw.translate(offX,offY); ctxDraw.scale(scale,scale);
+  ctxDraw.strokeStyle=color; ctxDraw.lineWidth=grosor/scale; ctxDraw.beginPath(); ctxDraw.moveTo(p1.x,p1.y); ctxDraw.lineTo(nx2,ny2); ctxDraw.stroke(); ctxDraw.restore();
+  closeMeasurePopup();
 }
 
-// ─── SAVE / LOAD ─────────────────────────────────────────────────────────────
+function toggleMirror(m) { mirrorMode = (mirrorMode === m ? null : m); ['v','h','both'].forEach(x=>document.getElementById('mb-'+x).className='mirror-btn '+(mirrorMode===x?'on':'off')); }
+
+function showProjection() { document.getElementById('proj-overlay').classList.remove('hidden'); resizeProj(); }
+function resizeProj() { const pc=document.getElementById('proj-canvas'); pc.width=W*dpr; pc.height=H*dpr; renderProj(); }
+function renderProj() {
+  const pc=document.getElementById('proj-canvas'); const pctx=pc.getContext('2d');
+  pctx.fillStyle='#000'; pctx.fillRect(0,0,pc.width,pc.height);
+  pctx.drawImage(canvasDraw, 0, 0);
+}
+function exitProjection() { document.getElementById('proj-overlay').classList.add('hidden'); }
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+window.addEventListener('resize', resize);
+(function init() {
+  resize();
+  const savedPx = localStorage.getItem('calib_pxPerCm');
+  if (savedPx) pxPerCm = parseFloat(savedPx);
+  
+  // FIX para WebView: Forzar touch-action none en canvases mediante script
+  ['canvas-base','canvas-draw','canvas-ui'].forEach(id => {
+    const c = document.getElementById(id);
+    if (c) {
+      c.style.touchAction = 'none';
+      c.style.webkitUserSelect = 'none';
+    }
+  });
+})();
+
+// Funciones de guardado y biblioteca simplificadas para v6
 function showSaveModal() { document.getElementById('modal-save').classList.remove('hidden'); }
 function showLibrary() { renderLibList(); document.getElementById('modal-library').classList.remove('hidden'); }
-function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-
 function savePattern() {
-  const name = document.getElementById('save-name').value.trim();
-  const sku  = document.getElementById('save-sku').value.trim();
-  const type = document.getElementById('save-type').value;
-  if (!name) { alert('Escribe un nombre'); return; }
-
-  const snap = ctxDraw.getImageData(0, 0, canvasDraw.width, canvasDraw.height);
-  // convert to base64 via temp canvas
-  const tmp = document.createElement('canvas');
-  tmp.width = canvasDraw.width; tmp.height = canvasDraw.height;
-  tmp.getContext('2d').putImageData(snap, 0, 0);
-  const dataUrl = tmp.toDataURL('image/png');
-
-  const lib = JSON.parse(localStorage.getItem('patrones_v4') || '[]');
-  lib.push({ name, sku, type, date: new Date().toLocaleDateString('es-CO'), dataUrl, w: tmp.width, h: tmp.height });
-  localStorage.setItem('patrones_v4', JSON.stringify(lib));
-  alert('✅ Guardado: ' + name + (sku ? ' (SKU ' + sku + ')' : ''));
-  closeModal('modal-save');
+  const name = document.getElementById('save-name').value;
+  if (!name) return;
+  const data = canvasDraw.toDataURL();
+  const lib = JSON.parse(localStorage.getItem('patrones_v6') || '[]');
+  lib.push({name, data, date: new Date().toLocaleDateString()});
+  localStorage.setItem('patrones_v6', JSON.stringify(lib));
+  closeModal('modal-save'); alert('Guardado!');
 }
-
-let selectedLibIdx = -1;
 function renderLibList() {
-  const lib = JSON.parse(localStorage.getItem('patrones_v4') || '[]');
-  const el = document.getElementById('lib-list');
-  if (lib.length === 0) { el.innerHTML = '<p style="color:#aaa;font-size:12px;">Sin patrones guardados</p>'; return; }
-  el.innerHTML = '';
+  const lib = JSON.parse(localStorage.getItem('patrones_v6') || '[]');
+  const el = document.getElementById('lib-list'); el.innerHTML = '';
   lib.forEach((p, i) => {
-    const div = document.createElement('div');
-    div.className = 'lib-item' + (i === selectedLibIdx ? ' selected' : '');
-    div.style.border = i === selectedLibIdx ? '2px solid #00d4ff' : '2px solid transparent';
-    div.innerHTML = `
-      <div onclick="selectLib(${i})" style="flex:1">
-        <div class="lib-item-name">${p.type === 'basico' ? '🔒' : '✏️'} ${p.name}</div>
-        <div class="lib-item-meta">${p.sku ? 'SKU: ' + p.sku + ' · ' : ''}${p.date}</div>
-      </div>
-      <button class="lib-item-del" onclick="deleteLib(${i})">🗑</button>`;
-    el.appendChild(div);
+    const d = document.createElement('div'); d.className = 'lib-item';
+    d.innerHTML = `<div>${p.name} <small>${p.date}</small></div><button onclick="deleteLib(${i})">🗑</button>`;
+    d.onclick = () => loadLib(i); el.appendChild(d);
   });
 }
-function selectLib(i) { selectedLibIdx = i; renderLibList(); }
+function loadLib(i) {
+  const lib = JSON.parse(localStorage.getItem('patrones_v6') || '[]');
+  const img = new Image(); img.onload = () => { saveHistory(); ctxDraw.clearRect(0,0,W*dpr,H*dpr); ctxDraw.drawImage(img,0,0,W,H); closeModal('modal-library'); };
+  img.src = lib[i].data;
+}
 function deleteLib(i) {
-  const lib = JSON.parse(localStorage.getItem('patrones_v4') || '[]');
-  lib.splice(i, 1);
-  localStorage.setItem('patrones_v4', JSON.stringify(lib));
-  if (selectedLibIdx >= lib.length) selectedLibIdx = lib.length - 1;
-  renderLibList();
+  const lib = JSON.parse(localStorage.getItem('patrones_v6') || '[]');
+  lib.splice(i, 1); localStorage.setItem('patrones_v6', JSON.stringify(lib)); renderLibList();
 }
-
-function loadSelectedAsBasic() {
-  if (selectedLibIdx < 0) { alert('Selecciona un patrón primero'); return; }
-  const lib = JSON.parse(localStorage.getItem('patrones_v4') || '[]');
-  const p = lib[selectedLibIdx];
-  const img = new Image();
-  img.onload = () => {
-    ctxBase.clearRect(0, 0, W, H);
-    // draw tinted gray
-    const tmp = document.createElement('canvas');
-    tmp.width = p.w; tmp.height = p.h;
-    const tc = tmp.getContext('2d');
-    tc.filter = 'grayscale(1) opacity(0.4)';
-    tc.drawImage(img, 0, 0);
-    basicSnap = tc.getImageData(0, 0, p.w, p.h);
-    // adjust if different size — simple: use as-is
-    document.getElementById('basic-status').textContent = '🔒 Básico: ' + p.name;
-    basicVisible = true;
-    redrawBase();
-    closeModal('modal-library');
-    alert('✅ Básico cargado como fondo. Puedes dibujar encima sin afectarlo.');
-  };
-  img.src = p.dataUrl;
-}
-
-function toggleBasicVisibility() {
-  basicVisible = !basicVisible;
-  document.getElementById('btn-toggle-basic').textContent = basicVisible ? '👁 Básico' : '🙈 Básico';
-  redrawBase();
-}
-
-
-// ─── MIRROR ──────────────────────────────────────────────────────────────────
-let mirrorMode = null; // 'v', 'h', 'both', null
-
-function toggleMirror(mode) {
-  if (mirrorMode === mode) {
-    mirrorMode = null;
-    ['v','h','both'].forEach(m => {
-      document.getElementById('mb-'+m).className = 'mirror-btn off';
-    });
-    document.getElementById('mirror-line-x').style.display = 'none';
-    document.getElementById('mirror-line-y').style.display = 'none';
-  } else {
-    mirrorMode = mode;
-    ['v','h','both'].forEach(m => {
-      document.getElementById('mb-'+m).className = 'mirror-btn ' + (m === mode ? 'on' : 'off');
-    });
-    document.getElementById('mirror-line-x').style.display = (mode === 'v' || mode === 'both') ? 'block' : 'none';
-    document.getElementById('mirror-line-y').style.display = (mode === 'h' || mode === 'both') ? 'block' : 'none';
-  }
-}
-
-function applyMirror() {
-  if (!mirrorMode) { alert('Primero activa un modo espejo'); return; }
-  saveHistory();
-  const snap = ctxDraw.getImageData(0, 0, canvasDraw.width, canvasDraw.height);
-  const tmp = document.createElement('canvas');
-  tmp.width = canvasDraw.width; tmp.height = canvasDraw.height;
-  const tc = tmp.getContext('2d');
-  tc.putImageData(snap, 0, 0);
-
-  const cx = canvasDraw.width / 2;
-  const cy = canvasDraw.height / 2;
-
-  if (mirrorMode === 'v' || mirrorMode === 'both') {
-    // mirror left→right: draw flipped version on right side
-    ctxDraw.save();
-    ctxDraw.translate(cx * 2 / dpr, 0);
-    ctxDraw.scale(-1, 1);
-    ctxDraw.drawImage(tmp, 0, 0, canvasDraw.width, canvasDraw.height, 0, 0, canvasDraw.width / dpr, canvasDraw.height / dpr);
-    ctxDraw.restore();
-  }
-  if (mirrorMode === 'h' || mirrorMode === 'both') {
-    // mirror top→bottom
-    const snap2 = ctxDraw.getImageData(0, 0, canvasDraw.width, canvasDraw.height);
-    const tmp2 = document.createElement('canvas');
-    tmp2.width = canvasDraw.width; tmp2.height = canvasDraw.height;
-    tmp2.getContext('2d').putImageData(snap2, 0, 0);
-    ctxDraw.save();
-    ctxDraw.translate(0, cy * 2 / dpr);
-    ctxDraw.scale(1, -1);
-    ctxDraw.drawImage(tmp2, 0, 0, canvasDraw.width, canvasDraw.height, 0, 0, canvasDraw.width / dpr, canvasDraw.height / dpr);
-    ctxDraw.restore();
-  }
-
-  // turn off mirror mode after applying
-  mirrorMode = null;
-  ['v','h','both'].forEach(m => document.getElementById('mb-'+m).className = 'mirror-btn off');
-  document.getElementById('mirror-line-x').style.display = 'none';
-  document.getElementById('mirror-line-y').style.display = 'none';
-  alert('✅ Espejo aplicado');
-}
-
-// Override draw methods to also draw mirrored stroke in real time
-const _origDraw = onMove;
-
-
-// ─── CALIBRATION ─────────────────────────────────────────────────────────────
-let calibFactor = 1.0; // how many real cm per screen cm
-
-function showCalib() {
-  // Show calib box at current pxPerCm size
-  const box = document.getElementById('calib-box');
-  const targetPx = Math.round(20 * pxPerCm);
-  box.style.width  = targetPx + 'px';
-  box.style.height = targetPx + 'px';
-  document.getElementById('calib-modal').classList.remove('hidden');
-}
-
-function adjustCalibBox(delta) {
-  const box = document.getElementById('calib-box');
-  let current = parseInt(box.style.width) || 150;
-  current = Math.max(40, Math.min(current + delta, 400));
-  box.style.width  = current + 'px';
-  box.style.height = current + 'px';
-  // Update pxPerCm live so user can see effect
-  const newPxPerCm = current / 20;
-  document.getElementById('calib-measured').placeholder = 'ej: ' + (20 * (pxPerCm / newPxPerCm)).toFixed(1);
-}
-
-function applyCalib() {
-  const measured = parseFloat(document.getElementById('calib-measured').value);
-  if (!measured || measured <= 0) { alert('Ingresa la medida real'); return; }
-  // We showed 20cm reference, they measured X cm in tela
-  calibFactor = measured / 20;
-  // Adjust pxPerCm so patterns render at real scale
-  // If projected 20cm → measured 25cm, we need to shrink by factor 20/25
-  const correction = 20 / measured;
-  pxPerCm = pxPerCm * correction;
-  localStorage.setItem('calib_factor', calibFactor);
-  localStorage.setItem('calib_pxPerCm', pxPerCm);
-  document.getElementById('calib-result').textContent =
-    '✅ Calibrado! Factor: ' + calibFactor.toFixed(3) + ' · 1 cm pantalla = ' + (1/calibFactor).toFixed(2) + ' cm tela';
-  redrawBase();
-  setTimeout(() => closeModal('calib-modal'), 1500);
-}
-
-// Load saved calibration
-(function loadCalib() {
-  const saved = localStorage.getItem('calib_pxPerCm');
-  if (saved) pxPerCm = parseFloat(saved);
-  calibFactor = parseFloat(localStorage.getItem('calib_factor') || '1');
-})();
-
-// ─── PROJECTION MODE ─────────────────────────────────────────────────────────
-let projScaleFactor = 1.0;
-let projOffsetX = 0, projOffsetY = 0;
-let projCtx = null;
-
-function showProjection() {
-  const overlay = document.getElementById('proj-overlay');
-  overlay.classList.remove('hidden');
-  const pc = document.getElementById('proj-canvas');
-  pc.width  = window.screen.width  * (window.devicePixelRatio || 1);
-  pc.height = window.screen.height * (window.devicePixelRatio || 1);
-  pc.style.width  = window.innerWidth  + 'px';
-  pc.style.height = (window.innerHeight - 60) + 'px';
-  projCtx = pc.getContext('2d');
-  projScaleFactor = 1.0;
-  projOffsetX = 0; projOffsetY = 0;
-  renderProjection();
-  // request fullscreen for better projection
-  if (overlay.requestFullscreen) overlay.requestFullscreen().catch(() => {});
-}
-
-function renderProjection() {
-  if (!projCtx) return;
-  const pc = document.getElementById('proj-canvas');
-  projCtx.clearRect(0, 0, pc.width, pc.height);
-  projCtx.fillStyle = '#000';
-  projCtx.fillRect(0, 0, pc.width, pc.height);
-
-  projCtx.save();
-  projCtx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
-  projCtx.translate(projOffsetX, projOffsetY);
-  projCtx.scale(projScaleFactor, projScaleFactor);
-
-  // Draw basic layer
-  if (basicSnap && basicVisible) {
-    const tmp = document.createElement('canvas');
-    tmp.width = canvasBase.width; tmp.height = canvasBase.height;
-    tmp.getContext('2d').putImageData(basicSnap, 0, 0);
-    projCtx.drawImage(tmp, 0, 0, canvasBase.width / dpr, canvasBase.height / dpr);
-  }
-  // Draw pattern layer — white on black for max contrast
-  const tmp2 = document.createElement('canvas');
-  tmp2.width = canvasDraw.width; tmp2.height = canvasDraw.height;
-  const tc2 = tmp2.getContext('2d');
-  tc2.putImageData(ctxDraw.getImageData(0,0,canvasDraw.width,canvasDraw.height), 0, 0);
-  projCtx.drawImage(tmp2, 0, 0, canvasDraw.width / dpr, canvasDraw.height / dpr);
-
-  // Calibration grid overlay (every 10cm)
-  projCtx.strokeStyle = '#ffffff15';
-  projCtx.lineWidth = 0.5;
-  const cmPx = pxPerCm * projScaleFactor;
-  for (let x = 0; x < window.innerWidth / projScaleFactor + 500; x += pxPerCm * 10) {
-    projCtx.beginPath(); projCtx.moveTo(x, 0); projCtx.lineTo(x, window.innerHeight); projCtx.stroke();
-  }
-  for (let y = 0; y < window.innerHeight / projScaleFactor + 500; y += pxPerCm * 10) {
-    projCtx.beginPath(); projCtx.moveTo(0, y); projCtx.lineTo(window.innerWidth, y); projCtx.stroke();
-  }
-
-  projCtx.restore();
-  document.getElementById('proj-scale-label').textContent = Math.round(projScaleFactor * 100) + '%';
-}
-
-function projScale(delta) {
-  projScaleFactor = Math.max(0.3, Math.min(5, projScaleFactor + delta));
-  renderProjection();
-}
-function projMove(dx, dy) {
-  projOffsetX += dx; projOffsetY += dy;
-  renderProjection();
-}
-function exitProjection() {
-  document.getElementById('proj-overlay').classList.add('hidden');
-  if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
-}
-
-// ─── IMPORT IMAGE ─────────────────────────────────────────────────────────────
-let importedImg = null;
-
-function importImage(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    importedImg = new Image();
-    importedImg.onload = () => {
-      const prev = document.getElementById('import-img-preview');
-      prev.src = e.target.result;
-      prev.style.display = 'block';
-      document.getElementById('import-info').style.display = 'block';
-      document.getElementById('modal-import').classList.remove('hidden');
-    };
-    importedImg.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-function placeImportedImage() {
-  if (!importedImg) return;
-  const refPx = parseFloat(document.getElementById('import-ref-px').value);
-  const refCm = parseFloat(document.getElementById('import-ref-cm').value);
-
-  saveHistory();
-  ctxDraw.save();
-  ctxDraw.translate(offX, offY);
-  ctxDraw.scale(scale, scale);
-
-  let drawW = importedImg.width;
-  let drawH = importedImg.height;
-
-  if (refPx > 0 && refCm > 0) {
-    // Scale so refPx in image = refCm * pxPerCm on canvas
-    const imgScale = (refCm * pxPerCm) / refPx;
-    drawW *= imgScale;
-    drawH *= imgScale;
-  } else {
-    // Default: fit t<div id="calib-modal" class="modal-bg hidden">
-  <div class="modal" style="max-width:96vw;width:96vw;padding:14px;">
-    <h2>📐 Calibrar Proyector Y300</h2>
-    <div class="calib-step">
-      <b>Paso 1:</b> Activa <b>Screen Mirror / Miracast</b> en el celular y conecta al Y300.
-    </div>
-    <div class="calib-step">
-      <b>Paso 2:</b> El cuadrado verde de abajo debería medir <b>20×20 cm exactos</b> sobre la tela. Mídelo con una regla física.
-    </div>
-
-    <!-- CUADRADO VISUAL REAL - se dibuja en CSS a tamaño real -->
-    <div style="display:flex;justify-content:center;margin:12px 0;">
-      <div id="calib-box" style="
-        width:150px; height:150px;
-        border:4px solid #00FF00;
-        background:#00FF0015;
-        border-radius:6px;
-        display:flex;flex-direction:column;
-        align-items:center;justify-content:center;
-        position:relative;
-        box-shadow:0 0 20px #00FF0055;
-      ">
-        <!-- cruces de esquina -->
-        <div style="position:absolute;top:6px;left:6px;width:12px;height:2px;background:#00FF00;"></div>
-        <div style="position:absolute;top:6px;left:6px;width:2px;height:12px;background:#00FF00;"></div>
-        <div style="position:absolute;top:6px;right:6px;width:12px;height:2px;background:#00FF00;"></div>
-        <div style="position:absolute;top:6px;right:6px;width:2px;height:12px;background:#00FF00;"></div>
-        <div style="position:absolute;bottom:6px;left:6px;width:12px;height:2px;background:#00FF00;"></div>
-        <div style="position:absolute;bottom:6px;left:6px;width:2px;height:12px;background:#00FF00;"></div>
-        <div style="position:absolute;bottom:6px;right:6px;width:12px;height:2px;background:#00FF00;"></div>
-        <div style="position:absolute;bottom:6px;right:6px;width:2px;height:12px;background:#00FF00;"></div>
-        <!-- líneas cruzadas centro -->
-        <div style="position:absolute;top:50%;left:10%;right:10%;height:1px;background:#00FF0055;"></div>
-        <div style="position:absolute;left:50%;top:10%;bottom:10%;width:1px;background:#00FF0055;"></div>
-        <span style="font-size:20px;font-weight:900;color:#00FF00;">20×20</span>
-        <span style="font-size:10px;color:#00FF00;opacity:0.8;">cm</span>
-      </div>
-    </div>
-
-    <!-- AJUSTE DE TAMAÑO DEL CUADRO -->
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;justify-content:center;">
-      <button onclick="adjustCalibBox(-10)" style="background:#e53935;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:18px;font-weight:bold;cursor:pointer;">−</button>
-      <span style="font-size:11px;color:#aaa;text-align:center;">Ajusta hasta que mida<br><b style="color:#00FF00;">exactamente 20 cm</b><br>con una regla</span>
-      <button onclick="adjustCalibBox(10)" style="background:#00c853;color:#000;border:none;border-radius:8px;padding:8px 16px;font-size:18px;font-weight:bold;cursor:pointer;">+</button>
-    </div>
-
-    <div class="calib-step">
-      <b>Paso 3:</b> Cuando el cuadro mida 20 cm reales, ingresa cuánto mide actualmente en la tela:
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
-      <input type="number" id="calib-measured" placeholder="ej: 25.5" step="0.5" style="flex:1">
-      <span style="color:#aaa;font-size:12px;">cm medidos en tela</span>
-    </div>
-    <div id="calib-result" style="font-size:11px;color:#00c853;margin-bottom:8px;"></div>
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-gray" onclick="closeModal('calib-modal')" style="flex:1;">Cancelar</button>
-      <button class="btn btn-green" onclick="applyCalib()" style="flex:1;">✅ Aplicar calibración</button>
-    </div>
-  </div>
-</div>ms:center;justify-content:center;
-        position:relative;
-        box-shadow:0 0 20px #00FF0055;
-      ">
-        <!-- cruces de esquina -->
-        <div style="position:absolute;top:6px;left:6px;width:12px;height:2px;background:#00FF00;"></div>
-        <div style="position:absolute;top:6px;left:6px;width:2px;height:12px;background:#00FF00;"></div>
-        <div style="position:absolute;top:6px;right:6px;width:12px;height:2px;background:#00FF00;"></div>
-        <div style="position:absolute;top:6px;right:6px;width:2px;height:12px;background:#00FF00;"></div>
-        <div style="position:absolute;bottom:6px;left:6px;width:12px;height:2px;background:#00FF00;"></div>
-        <div style="position:absolute;bottom:6px;left:6px;width:2px;height:12px;background:#00FF00;"></div>
-        <div style="position:absolute;bottom:6px;right:6px;width:12px;height:2px;background:#00FF00;"></div>
-        <div style="position:absolute;bottom:6px;right:6px;width:2px;height:12px;background:#00FF00;"></div>
-        <!-- líneas cruzadas centro -->
-        <div style="position:absolute;top:50%;left:10%;right:10%;height:1px;background:#00FF0055;"></div>
-        <div style="position:absolute;left:50%;top:10%;bottom:10%;width:1px;background:#00FF0055;"></div>
-        <span style="font-size:20px;font-weight:900;color:#00FF00;">20×20</span>
-        <span style="font-size:10px;color:#00FF00;opacity:0.8;">cm</span>
-      </div>
-    </div>
-
-    <!-- AJUSTE DE TAMAÑO DEL CUADRO -->
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;justify-content:center;">
-      <button onclick="adjustCalibBox(-10)" style="background:#e53935;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:18px;font-weight:bold;cursor:pointer;">−</button>
-      <span style="font-size:11px;color:#aaa;text-align:center;">Ajusta hasta que mida<br><b style="color:#00FF00;">exactamente 20 cm</b><br>con una regla</span>
-      <button onclick="adjustCalibBox(10)" style="background:#00c853;color:#000;border:none;border-radius:8px;padding:8px 16px;font-size:18px;font-weight:bold;cursor:pointer;">+</button>
-    </div>
-
-    <div class="calib-step">
-      <b>Paso 3:</b> Cuando el cuadro mida 20 cm reales, ingresa cuánto mide actualmente en la tela:
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
-      <input type="number" id="calib-measured" placeholder="ej: 25.5" step="0.5" style="flex:1">
-      <span style="color:#aaa;font-size:12px;">cm medidos en tela</span>
-    </div>
-    <div id="calib-result" style="font-size:11px;color:#00c853;margin-bottom:8px;"></div>
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-gray" onclick="closeModal('calib-modal')" style="flex:1;">Cancelar</button>
-      <button class="btn btn-green" onclick="applyCalib()" style="flex:1;">✅ Aplicar calibración</button>
-    </div>
-  </div>
-</div>
-
-<!-- PROJECTION OVERLAY -->
-<div id="proj-overlay" class="hidden">
-  <canvas id="proj-canvas"></canvas>
-  <div id="proj-controls">
-    <button onclick="projScale(-0.05)" style="padding:8px 16px;background:#333;border:none;color:#fff;border-radius:8px;font-size:18px;cursor:pointer;">➖</button>
-    <div id="proj-scale-label">100%</div>
-    <button onclick="projScale(+0.05)" style="padding:8px 16px;background:#333;border:none;color:#fff;border-radius:8px;font-size:18px;cursor:pointer;">➕</button>
-    <button onclick="projMove(-10,0)" style="padding:8px 12px;background:#333;border:none;color:#fff;border-radius:8px;font-size:16px;cursor:pointer;">◀</button>
-    <button onclick="projMove(0,-10)" style="padding:8px 12px;background:#333;border:none;color:#fff;border-radius:8px;font-size:16px;cursor:pointer;">▲</button>
-    <button onclick="projMove(0,+10)" style="padding:8px 12px;background:#333;border:none;color:#fff;border-radius:8px;font-size:16px;cursor:pointer;">▼</button>
-    <button onclick="projMove(+10,0)" style="padding:8px 12px;background:#333;border:none;color:#fff;border-radius:8px;font-size:16px;cursor:pointer;">▶</button>
-    <button onclick="exitProjection()" style="padding:8px 16px;background:#e53935;border:none;color:#fff;border-radius:8px;font-size:13px;cursor:pointer;">✖ Salir</button>
-  </div>
-</div>
-
-<!-- IMPORT MODAL -->
-<div id="modal-import" class="modal-bg hidden">
-  <div class="modal">
-    <h2>📥 Importar imagen / PDF</h2>
-    <img id="import-img-preview" src="">
-    <div class="calib-step" id="import-info" style="display:none;">
-      <b>Escala:</b> ¿Cuánto mide una referencia conocida en este patrón?<br>
-      Ej: el ancho de hombro = <input type="number" id="import-ref-px" placeholder="px en imagen" style="width:70px"> px en la imagen<br>
-      = <input type="number" id="import-ref-cm" placeholder="cm real" step="0.5" style="width:60px"> cm reales
-    </div>
-    <div class="modal-btns">
-      <button class="btn btn-gray" onclick="closeModal('modal-import')">Cancelar</button>
-      <button class="btn btn-cyan" onclick="placeImportedImage()">📌 Colocar en lienzo</button>
-    </div>
-  </div>
-</div>
-
-<script>
-// Fix para WebView Android: asegurar que el canvas superior recibe todos los eventos
-(function() {
-  function fixCanvases() {
-    ['canvas-base','canvas-draw','canvas-ui'].forEach(function(id) {
-      var c = document.getElementById(id);
-      if (c) {
-        c.style.touchAction = 'none';
-        c.style.webkitUserSelect = 'none';
-      }
-    });
-  }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', fixCanvases);
-  } else {
-    fixCanvases();
-  }
-})();
-</script></body>
+</script>
+</body>
 </html>
