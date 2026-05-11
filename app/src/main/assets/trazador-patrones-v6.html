@@ -19,9 +19,9 @@
   body { background:#1a1a2e; color:#fff; font-family:sans-serif; overflow:hidden; height:100vh; display:flex; flex-direction:column; }
 
   /* HEADER */
-  #header { background:#16213e; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #0f3460; flex-shrink:0; }
+  #header { background:#16213e; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #0f3460; flex-shrink:0; flex-wrap:wrap; gap:8px; }
   #header h1 { font-size:14px; color:#00d4ff; }
-  #header-right { display:flex; gap:8px; align-items:center; }
+  #header-right { display:flex; gap:8px; align-items:center; overflow-x:auto; max-width:100%; padding-bottom:2px; }
 
   /* TOOLBAR */
   #toolbar { background:#16213e; display:flex; align-items:center; gap:4px; padding:6px 10px; border-bottom:1px solid #0f3460; flex-shrink:0; overflow-x:auto; }
@@ -402,7 +402,19 @@ canvasUI.addEventListener('pointermove', e => {
   if (tool === 'lapiz') {
     ctxDraw.strokeStyle = color; ctxDraw.lineWidth = grosor / scale; ctxDraw.lineCap = 'round';
     ctxDraw.beginPath(); ctxDraw.moveTo(lastX, lastY); ctxDraw.lineTo(pt.x, pt.y); ctxDraw.stroke();
-    if (mirrorMode === 'v' || mirrorMode === 'both') { ctxDraw.beginPath(); ctxDraw.moveTo(W/scale-lastX, lastY); ctxDraw.lineTo(W/scale-pt.x, pt.y); ctxDraw.stroke(); }
+    
+    // Live mirror
+    if (mirrorMode) {
+      const cx = (W/2 - offX)/scale;
+      const cy = (H/2 - offY)/scale;
+      let mx = pt.x, my = pt.y, lmx = lastX, lmy = lastY;
+      
+      if (mirrorMode === 'v' || mirrorMode === 'both') { mx = cx + (cx - pt.x); lmx = cx + (cx - lastX); }
+      if (mirrorMode === 'h' || mirrorMode === 'both') { my = cy + (cy - pt.y); lmy = cy + (cy - lastY); }
+      
+      ctxDraw.beginPath(); ctxDraw.moveTo(lmx, lmy); ctxDraw.lineTo(mx, my); ctxDraw.stroke();
+    }
+    
     lastX = pt.x; lastY = pt.y;
   } else if (tool === 'borrar') {
     ctxDraw.globalCompositeOperation = 'destination-out'; ctxDraw.lineWidth = 20/scale; ctxDraw.lineCap = 'round';
@@ -429,7 +441,7 @@ canvasUI.addEventListener('pointerup', e => {
     saveHistory(); ctxDraw.save(); ctxDraw.translate(offX,offY); ctxDraw.scale(scale,scale);
     ctxDraw.strokeStyle=color; ctxDraw.lineWidth=grosor/scale; ctxDraw.lineCap='round'; ctxDraw.beginPath();
     if (tool==='linea') { ctxDraw.moveTo(startX,startY); ctxDraw.lineTo(pt.x,pt.y); ctxDraw.stroke(); lastLineP1={x:startX,y:startY}; lastLineP2={x:pt.x,y:pt.y}; showMeasurePopup(e.clientX,e.clientY,startX,startY,pt.x,pt.y); }
-    else if (tool==='rect') ctxDraw.strokeRect(startX,startY,pt.x-startX,pt.y-startY);
+    else if (tool==='rect') { ctxDraw.strokeRect(startX,startY,pt.x-startX,pt.y-startY); showRectPopup(e.clientX,e.clientY,pt.x-startX,pt.y-startY); }
     else if (tool==='curva') { ctxDraw.moveTo(startX,startY); ctxDraw.quadraticCurveTo((startX+pt.x)/2, (startY+pt.y)/2-50/scale, pt.x, pt.y); ctxDraw.stroke(); }
     ctxDraw.restore();
   }
@@ -455,6 +467,15 @@ function showMeasurePopup(ex,ey,x1,y1,x2,y2) {
   const dCm = cmFromPx(distPx(x1,y1,x2,y2));
   const p = document.getElementById('measure-popup');
   document.getElementById('mp-result').textContent = dCm.toFixed(1) + ' cm';
+  document.getElementById('mp-correct-row').style.display = 'flex';
+  p.classList.remove('hidden'); p.style.left = Math.min(ex,W-220)+'px'; p.style.top = Math.min(ey,H-180)+'px';
+}
+function showRectPopup(ex,ey,wPx,hPx) {
+  const wCm = cmFromPx(Math.abs(wPx));
+  const hCm = cmFromPx(Math.abs(hPx));
+  const p = document.getElementById('measure-popup');
+  document.getElementById('mp-result').textContent = wCm.toFixed(1) + ' × ' + hCm.toFixed(1) + ' cm';
+  document.getElementById('mp-correct-row').style.display = 'none'; // ocultar corrección para rects
   p.classList.remove('hidden'); p.style.left = Math.min(ex,W-220)+'px'; p.style.top = Math.min(ey,H-180)+'px';
 }
 function closeMeasurePopup() { document.getElementById('measure-popup').classList.add('hidden'); }
@@ -470,7 +491,34 @@ function applyCorrection() {
   closeMeasurePopup();
 }
 
-function toggleMirror(m) { mirrorMode = (mirrorMode === m ? null : m); ['v','h','both'].forEach(x=>document.getElementById('mb-'+x).className='mirror-btn '+(mirrorMode===x?'on':'off')); }
+function toggleMirror(m) { 
+  mirrorMode = (mirrorMode === m ? null : m); 
+  ['v','h','both'].forEach(x=>document.getElementById('mb-'+x).className='mirror-btn '+(mirrorMode===x?'on':'off')); 
+  document.getElementById('mirror-line-x').style.display = (mirrorMode==='v'||mirrorMode==='both') ? 'block' : 'none';
+  document.getElementById('mirror-line-y').style.display = (mirrorMode==='h'||mirrorMode==='both') ? 'block' : 'none';
+}
+
+function applyMirror() {
+  if (!mirrorMode) { alert('Selecciona un modo de espejo primero.'); return; }
+  saveHistory();
+  const temp = document.createElement('canvas');
+  temp.width = canvasDraw.width; temp.height = canvasDraw.height;
+  const tCtx = temp.getContext('2d');
+  
+  tCtx.translate(temp.width/2, temp.height/2);
+  if (mirrorMode === 'v') tCtx.scale(-1, 1);
+  if (mirrorMode === 'h') tCtx.scale(1, -1);
+  if (mirrorMode === 'both') tCtx.scale(-1, -1);
+  tCtx.translate(-temp.width/2, -temp.height/2);
+  
+  tCtx.drawImage(canvasDraw, 0, 0);
+  
+  ctxDraw.save();
+  ctxDraw.setTransform(1,0,0,1,0,0);
+  ctxDraw.drawImage(temp, 0, 0);
+  ctxDraw.restore();
+  alert('Espejo aplicado sobre todo el dibujo.');
+}
 
 function showProjection() { document.getElementById('proj-overlay').classList.remove('hidden'); resizeProj(); }
 function resizeProj() { const pc=document.getElementById('proj-canvas'); pc.width=W*dpr; pc.height=H*dpr; renderProj(); }
