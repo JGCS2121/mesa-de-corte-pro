@@ -1,11 +1,14 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d0d1a">
+<meta name="description" content="Sistema digital de patronaje para mesa de corte. Trazador, Nesting, Graduación de tallas y Calculadora de costos.">
 <title>Mesa de Corte Pro</title>
+<link rel="manifest" href="manifest.json">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{
@@ -18,8 +21,8 @@ body{
 .hero{text-align:center;margin-bottom:28px;}
 .hero .em{font-size:58px;display:block;margin-bottom:10px;}
 .hero h1{font-size:24px;font-weight:900;color:#00d4ff;letter-spacing:-0.5px;}
-.hero p{font-size:12px;color:#444;margin-top:4px;}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:480px;margin-bottom:20px;}
+.hero p{font-size:12px;color:#666;margin-top:4px;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:480px;margin-bottom:12px;}
 .card{
   background:#16213e;border:1px solid #ffffff08;border-radius:18px;
   padding:20px 14px;text-align:center;cursor:pointer;
@@ -30,55 +33,95 @@ body{
 .card:active{transform:scale(.95);border-color:#00d4ff55;background:#1a2a4e;}
 .card .em{font-size:34px;display:block;margin-bottom:10px;}
 .card b{font-size:13px;color:#fff;display:block;margin-bottom:4px;}
-.card span{font-size:10px;color:#444;line-height:1.5;display:block;}
+.card span{font-size:10px;color:#555;line-height:1.5;display:block;}
 .card .badge{
   display:inline-block;margin-top:8px;
   background:#00d4ff18;border:1px solid #00d4ff33;
   color:#00d4ff;font-size:9px;font-weight:700;
   padding:2px 8px;border-radius:10px;
 }
+/* Tarjeta cámara */
+.card-cam{
+  width:100%;max-width:480px;
+  background:linear-gradient(135deg,#1a0a3e,#2a1060,#1a0a3e);
+  border:1px solid #7c3aed55;border-radius:18px;
+  padding:18px 20px;cursor:pointer;
+  text-decoration:none;display:flex;align-items:center;gap:16px;
+  -webkit-tap-highlight-color:transparent;
+  transition:all .15s;margin-bottom:12px;
+  box-shadow:0 4px 24px #7c3aed22;
+}
+.card-cam:active{transform:scale(.97);border-color:#7c3aed99;}
+.card-cam .cam-icon{font-size:42px;flex-shrink:0;}
+.card-cam .cam-info{text-align:left;}
+.card-cam .cam-info b{font-size:14px;color:#c4b5fd;display:block;margin-bottom:3px;font-weight:900;}
+.card-cam .cam-info span{font-size:11px;color:#7c5fbf;line-height:1.5;display:block;}
+.cam-badge{display:inline-block;margin-top:6px;background:#7c3aed22;border:1px solid #7c3aed55;color:#c4b5fd;font-size:9px;font-weight:700;padding:2px 10px;border-radius:10px;}
+.new-tag{display:inline-block;background:#7c3aed;color:#fff;font-size:8px;font-weight:900;padding:1px 6px;border-radius:6px;margin-left:6px;vertical-align:middle;}
 .tip{
   background:#00d4ff06;border:1px solid #00d4ff1a;
   border-radius:14px;padding:14px;
-  font-size:11px;color:#444;line-height:1.9;
+  font-size:11px;color:#555;line-height:1.9;
   width:100%;max-width:480px;text-align:center;
 }
 .tip b{color:#00d4ff;}
-.version{margin-top:16px;font-size:9px;color:#222;letter-spacing:1px;}
-/* FIX: restore touch events for interactive elements */
-button, .btn, .tool-btn, .mirror-btn, .color-dot,
-select, input, textarea, a, label, [onclick] {
-  touch-action: manipulation !important;
-  cursor: pointer;
-}</style>
+/* Banner instalar */
+.install-banner{
+  width:100%;max-width:480px;
+  background:#00c85312;border:1px solid #00c85344;
+  border-radius:14px;padding:12px 16px;
+  font-size:11px;color:#00c853;
+  margin-bottom:16px;text-align:center;line-height:1.8;
+}
+.install-banner b{color:#00ff80;}
+.version{margin-top:16px;font-size:9px;color:#333;letter-spacing:1px;}
+</style>
 </head>
 <body>
+
 <div class="hero">
   <span class="em">✂️</span>
   <h1>Mesa de Corte Pro</h1>
   <p>Sistema digital de patronaje · Bogotá 🇨🇴</p>
 </div>
 
+<!-- Banner instalar como app -->
+<div class="install-banner">
+  <b>📲 Instalar como app:</b> Chrome ⋮ (tres puntos) → "Añadir a pantalla de inicio" → ¡listo!<br>
+  Funciona sin internet después de instalada ✅
+</div>
+
+<!-- Tarjeta cámara -->
+<a class="card-cam" href="html_modules/trazador-patrones-v6.html">
+  <span class="cam-icon">📷</span>
+  <div class="cam-info">
+    <b>Escanear Patrón <span class="new-tag">NUEVO</span></b>
+    <span>Toma foto del patrón de papel<br>y digitalízalo automáticamente</span>
+    <span class="cam-badge">📸 Foto · 🔍 Detección de bordes</span>
+  </div>
+</a>
+
+<!-- Grid módulos -->
 <div class="grid">
-  <a class="card" href="trazador-patrones-v6.html">
+  <a class="card" href="html_modules/trazador-patrones-v6.html">
     <span class="em">✏️</span>
     <b>Trazador v6</b>
     <span>Dibuja patrones a escala real</span>
     <span class="badge">📽️ Proyecta al Y300</span>
   </a>
-  <a class="card" href="nesting-v1.html">
+  <a class="card" href="html_modules/nesting-v1.html">
     <span class="em">🧵</span>
     <b>Nesting</b>
     <span>Optimiza piezas en la tela</span>
     <span class="badge">% eficiencia</span>
   </a>
-  <a class="card" href="graduacion-tallas-v1.html">
+  <a class="card" href="html_modules/graduacion-tallas-v1.html">
     <span class="em">📐</span>
     <b>Graduación</b>
     <span>Tallas 4 a 20 automáticas</span>
     <span class="badge">Ropa femenina</span>
   </a>
-  <a class="card" href="calculadora-costos-v1.html">
+  <a class="card" href="html_modules/calculadora-costos-v1.html">
     <span class="em">💰</span>
     <b>Costos</b>
     <span>Precio de venta y margen</span>
@@ -87,11 +130,18 @@ select, input, textarea, a, label, [onclick] {
 </div>
 
 <div class="tip">
-  <b>📲 Usar como app:</b> Chrome ⋮ → Añadir a pantalla de inicio<br>
+  <b>📷 Escanear:</b> Trazador → botón 📷 Escanear en la barra de herramientas<br>
   <b>📽️ Proyección Y300:</b> Trazador → Calibrar → Proyectar<br>
   <b>✅ Funciona sin internet</b>
 </div>
 
 <div class="version">MESA DE CORTE PRO · v6 · 2026</div>
+
+<script>
+// Registrar Service Worker para funcionalidad offline
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(function(){});
+}
+</script>
 </body>
 </html>
