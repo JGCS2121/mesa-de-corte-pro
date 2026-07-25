@@ -82,12 +82,23 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         webView.setWebViewClient(new WebViewClient() {
+            // Para Android antiguo
             @SuppressWarnings("deprecation")
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                return handleUrlClick(url);
+            }
+            
+            // Para Android moderno (crítico para que funcione)
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, android.webkit.WebResourceRequest request) {
+                return handleUrlClick(request.getUrl().toString());
+            }
+
+            private boolean handleUrlClick(String url) {
                 if (url.contains("trazador-patrones-v6.html")) {
                     bottomNavigation.setSelectedItemId(R.id.nav_trazador);
-                    return true; // Cancel navigation
+                    return true; 
                 } else if (url.contains("nesting-v1.html")) {
                     bottomNavigation.setSelectedItemId(R.id.nav_nesting);
                     return true;
