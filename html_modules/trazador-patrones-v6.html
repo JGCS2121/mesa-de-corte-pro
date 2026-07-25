@@ -121,7 +121,6 @@
   <div id="header-right">
     <button class="btn btn-orange" onclick="showCalib()" style="font-size:11px;">📐 Calibrar</button>
     <button class="btn btn-cyan" onclick="showProjection()" style="font-size:11px;">📽️ Proyectar</button>
-    <button class="btn" onclick="openCamModal()" style="font-size:11px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;padding:7px 14px;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">📷 Escanear</button>
     <button class="btn btn-gray" onclick="document.getElementById('import-file').click()" style="font-size:11px;">📥 Importar</button>
     <input type="file" id="import-file" accept="image/*" style="display:none" onchange="importImage(this)">
     <button class="btn btn-gray" onclick="showLibrary()" style="font-size:11px;">📂 Biblioteca</button>
@@ -140,6 +139,8 @@
   <button class="tool-btn" onclick="undo()"><span>↩️</span>Undo</button>
   <div class="sep"></div>
   <button class="tool-btn" onclick="clearDraw()" style="color:#ff6d6d;"><span>🧹</span>Limpiar</button>
+  <div class="sep"></div>
+  <button class="tool-btn" onclick="openCamModal()" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;min-width:54px;"><span>📷</span>Escanear</button>
 </div>
 
 <!-- LAYER BAR -->

@@ -19,7 +19,7 @@ body{
 .hero .em{font-size:58px;display:block;margin-bottom:10px;}
 .hero h1{font-size:24px;font-weight:900;color:#00d4ff;letter-spacing:-0.5px;}
 .hero p{font-size:12px;color:#444;margin-top:4px;}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:480px;margin-bottom:20px;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:480px;margin-bottom:12px;}
 .card{
   background:#16213e;border:1px solid #ffffff08;border-radius:18px;
   padding:20px 14px;text-align:center;cursor:pointer;
@@ -37,6 +37,36 @@ body{
   color:#00d4ff;font-size:9px;font-weight:700;
   padding:2px 8px;border-radius:10px;
 }
+
+/* Tarjeta especial camara - ancho completo */
+.card-cam{
+  width:100%;max-width:480px;
+  background:linear-gradient(135deg,#1a0a3e,#2a1060,#1a0a3e);
+  border:1px solid #7c3aed55;border-radius:18px;
+  padding:18px 20px;cursor:pointer;
+  text-decoration:none;display:flex;align-items:center;gap:16px;
+  -webkit-tap-highlight-color:transparent;
+  transition:all .15s;
+  margin-bottom:12px;
+  box-shadow:0 4px 24px #7c3aed22;
+}
+.card-cam:active{transform:scale(.97);border-color:#7c3aed99;box-shadow:0 4px 32px #7c3aed44;}
+.card-cam .cam-icon{font-size:42px;flex-shrink:0;}
+.card-cam .cam-info{text-align:left;}
+.card-cam .cam-info b{font-size:14px;color:#c4b5fd;display:block;margin-bottom:3px;font-weight:900;}
+.card-cam .cam-info span{font-size:11px;color:#7c5fbf;line-height:1.5;display:block;}
+.card-cam .cam-badge{
+  display:inline-block;margin-top:6px;
+  background:#7c3aed22;border:1px solid #7c3aed55;
+  color:#c4b5fd;font-size:9px;font-weight:700;
+  padding:2px 10px;border-radius:10px;
+}
+.new-tag{
+  display:inline-block;background:#7c3aed;color:#fff;
+  font-size:8px;font-weight:900;padding:1px 6px;border-radius:6px;
+  margin-left:6px;vertical-align:middle;letter-spacing:0.5px;
+}
+
 .tip{
   background:#00d4ff06;border:1px solid #00d4ff1a;
   border-radius:14px;padding:14px;
@@ -54,6 +84,17 @@ body{
   <p>Sistema digital de patronaje · Bogotá 🇨🇴</p>
 </div>
 
+<!-- TARJETA PRINCIPAL: Escanear con camara (NUEVO) -->
+<a class="card-cam" href="trazador-patrones-v6.html">
+  <span class="cam-icon">📷</span>
+  <div class="cam-info">
+    <b>Escanear Patrón <span class="new-tag">NUEVO</span></b>
+    <span>Toma una foto del patrón de papel<br>y digitalízalo automáticamente</span>
+    <span class="cam-badge">📸 Fase 1 · 🔍 Detección de bordes Fase 2</span>
+  </div>
+</a>
+
+<!-- GRID DE MODULOS -->
 <div class="grid">
   <a class="card" href="trazador-patrones-v6.html">
     <span class="em">✏️</span>
@@ -82,6 +123,7 @@ body{
 </div>
 
 <div class="tip">
+  <b>📷 Escanear patrón:</b> Trazador → botón 📷 Escanear en la barra de herramientas<br>
   <b>📲 Usar como app:</b> Chrome ⋮ → Añadir a pantalla de inicio<br>
   <b>📽️ Proyección Y300:</b> Trazador → Calibrar → Proyectar<br>
   <b>✅ Funciona sin internet</b>
