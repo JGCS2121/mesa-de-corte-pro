@@ -81,7 +81,26 @@ public class MainActivity extends AppCompatActivity {
                 request.grant(request.getResources());
             }
         });
-        webView.setWebViewClient(new WebViewClient());
+        webView.setWebViewClient(new WebViewClient() {
+            @SuppressWarnings("deprecation")
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                if (url.contains("trazador-patrones-v6.html")) {
+                    bottomNavigation.setSelectedItemId(R.id.nav_trazador);
+                    return true; // Cancel navigation
+                } else if (url.contains("nesting-v1.html")) {
+                    bottomNavigation.setSelectedItemId(R.id.nav_nesting);
+                    return true;
+                } else if (url.contains("graduacion-tallas-v1.html")) {
+                    bottomNavigation.setSelectedItemId(R.id.nav_tallas);
+                    return true;
+                } else if (url.contains("calculadora-costos-v1.html")) {
+                    bottomNavigation.setSelectedItemId(R.id.nav_costos);
+                    return true;
+                }
+                return false;
+            }
+        });
         webView.setFocusable(true);
         webView.setFocusableInTouchMode(true);
         webView.requestFocus();
