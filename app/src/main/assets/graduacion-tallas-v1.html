@@ -5,11 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Graduación Automática de Tallas</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  canvas { touch-action: none; }
-  button, .btn, .tool-btn, .mirror-btn, select, input, a {
-    touch-action: manipulation;
-  }
+* { margin:0; padding:0; box-sizing:border-box; }
 body { background:#1a1a2e; color:#fff; font-family:sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
 
 #header { background:#16213e; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #0f3460; flex-shrink:0; flex-wrap:wrap; gap:6px; }
@@ -56,12 +52,7 @@ select, input[type=number] { background:#0f3460; color:#fff; border:1px solid #0
 .consumo-row label { color:#aaa; font-size:11px; margin:0; }
 .consumo-row input, .consumo-row select { width:70px; margin:0; }
 .consumo-result { background:#00c85322; border:1px solid #00c853; border-radius:8px; padding:10px; font-size:13px; margin-top:8px; }
-/* FIX: restore touch events for interactive elements */
-button, .btn, .tool-btn, .mirror-btn, .color-dot,
-select, input, textarea, a, label, [onclick] {
-  touch-action: manipulation !important;
-  cursor: pointer;
-}</style>
+</style>
 </head>
 <body>
 
@@ -492,9 +483,6 @@ window.GRAD_DATA=${json};
 
 function closeModal(id){document.getElementById(id).classList.add('hidden');}
 window.addEventListener('resize',resize);
-const ro = new ResizeObserver(() => { if (document.body.clientWidth > 0) resize(); });
-ro.observe(document.body);
-
 resize();
 
 // Load blusa by default

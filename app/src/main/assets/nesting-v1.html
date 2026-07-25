@@ -5,11 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Optimizador de Tela - Nesting</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  canvas { touch-action: none; }
-  button, .btn, .tool-btn, .mirror-btn, select, input, a {
-    touch-action: manipulation;
-  }
+* { margin:0; padding:0; box-sizing:border-box; touch-action:none; }
 body { background:#1a1a2e; color:#fff; font-family:sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
 
 #header { background:#16213e; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #0f3460; flex-shrink:0; }
@@ -55,12 +51,7 @@ select, input[type=number] { background:#0f3460; color:#fff; border:1px solid #0
 .piece-row input { flex:1; min-width:60px; }
 
 .tip { font-size:11px; color:#aaa; margin-top:4px; }
-/* FIX: restore touch events for interactive elements */
-button, .btn, .tool-btn, .mirror-btn, .color-dot,
-select, input, textarea, a, label, [onclick] {
-  touch-action: manipulation !important;
-  cursor: pointer;
-}</style>
+</style>
 </head>
 <body>
 
@@ -511,9 +502,6 @@ function exitProj() {
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
 window.addEventListener('resize', resize);
-const ro = new ResizeObserver(() => { if (document.body.clientWidth > 0) resize(); });
-ro.observe(document.body);
-
 resize();
 </script>
 </body>

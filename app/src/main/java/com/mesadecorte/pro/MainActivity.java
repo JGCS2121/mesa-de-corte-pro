@@ -74,6 +74,13 @@ public class MainActivity extends AppCompatActivity {
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
 
+        webView.setWebChromeClient(new android.webkit.WebChromeClient() {
+            @Override
+            public void onPermissionRequest(final android.webkit.PermissionRequest request) {
+                // Permite acceso a cámara y micrófono desde el WebView
+                request.grant(request.getResources());
+            }
+        });
         webView.setWebViewClient(new WebViewClient());
         webView.setFocusable(true);
         webView.setFocusableInTouchMode(true);

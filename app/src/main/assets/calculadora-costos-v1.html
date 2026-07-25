@@ -1,15 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Calculadora de Costos - Mesa de Corte</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  canvas { touch-action: none; }
-  button, .btn, .tool-btn, .mirror-btn, select, input, a {
-    touch-action: manipulation;
-  }
+* { margin:0; padding:0; box-sizing:border-box; }
 body { background:#1a1a2e; color:#fff; font-family:sans-serif; min-height:100vh; }
 
 #header { background:#16213e; padding:10px 14px; border-bottom:2px solid #0f3460; display:flex; align-items:center; gap:10px; }
@@ -62,12 +58,7 @@ input, select { width:100%; padding:8px; background:#0f3460; color:#fff; border:
 .history-item .hi-name { font-size:12px; }
 .history-item .hi-price { font-size:13px; font-weight:bold; color:#00c853; }
 .history-item .hi-sub { font-size:10px; color:#aaa; }
-/* FIX: restore touch events for interactive elements */
-button, .btn, .tool-btn, .mirror-btn, .color-dot,
-select, input, textarea, a, label, [onclick] {
-  touch-action: manipulation !important;
-  cursor: pointer;
-}</style>
+</style>
 </head>
 <body>
 
